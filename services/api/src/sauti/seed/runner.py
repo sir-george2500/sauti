@@ -52,6 +52,11 @@ SCENARIO_KIMIRONKO = {
             "Greet before you ask a price — walking up and naming a number is "
             "rude. A warm “Mwaramutse! Amakuru?” opens every good bargain."
         ),
+        # Served as the persona's first message without an LLM call.
+        "opening_line": {
+            "ky": "Mwaramutse neza! Ngwino urebe — mfite inyanya n'imboga nziza uyu munsi.",
+            "en": "Good morning! Come and see — I have nice tomatoes and greens today.",
+        },
     },
     "goals": [
         "greet the vendor",
@@ -62,6 +67,82 @@ SCENARIO_KIMIRONKO = {
     "min_cefr": "A1",
     "voice_speaker": "Diane",
 }
+
+SCENARIO_MOTO = {
+    "title": "Urugendo rwa moto",
+    "setting": (
+        "The moto stage at Kimironko, Kigali — helmets on the handlebars, "
+        "drivers calling out for passengers"
+    ),
+    "persona": {
+        "name": "Eric",
+        "role": "moto driver",
+        "description": (
+            "Eric has driven a moto from the Kimironko stage for six years. "
+            "Quick with a quote and fair after a friendly bargain, he expects "
+            "you to greet him, name your destination and settle the fare "
+            "before the helmet goes on."
+        ),
+        "situation_tag": "transport",
+        "umuco_tip": (
+            "Agree the fare BEFORE you mount — negotiating at the destination "
+            "is bad form on both sides. Helmets are law: a driver without a "
+            "passenger helmet is not your driver."
+        ),
+        "opening_line": {
+            "ky": "Muraho! Urashaka kujya he?",
+            "en": "Hello! Where do you want to go?",
+        },
+    },
+    "goals": [
+        "greet the driver",
+        "say where you're going",
+        "ask the price",
+        "agree on a fare",
+    ],
+    "min_cefr": "A1",
+    "voice_speaker": "Emmanuel",
+}
+
+SCENARIO_FAMILY_VISIT = {
+    "title": "Gusura umuryango",
+    "setting": (
+        "A family home in Remera, Kigali — a Sunday afternoon visit, "
+        "tea already warming in the kitchen"
+    ),
+    "persona": {
+        "name": "Mama Chantal",
+        "role": "host and mother of the family",
+        "description": (
+            "Mama Chantal keeps an open door in Remera — a visitor is met "
+            "with a seat, a warm drink and questions about every relative. "
+            "She greets by the time of day, asks after your whole family, "
+            "and will not let a guest leave hungry."
+        ),
+        "situation_tag": "family",
+        "umuco_tip": (
+            "A visitor is always offered something — milk, tea or food. "
+            "Refusing everything wounds your host: accept at least a taste, "
+            "or soften a refusal with “urakoze, ndahaze” (thank you, I'm full)."
+        ),
+        "opening_line": {
+            "ky": "Mwiriwe neza! Murakaza neza mu rugo rwacu — amakuru y'umuryango?",
+            "en": "Good afternoon! Welcome to our home — how is the family?",
+        },
+    },
+    "goals": [
+        "greet by the time of day",
+        "ask after the family",
+        "accept food politely",
+        "thank your host",
+    ],
+    "min_cefr": "A2",
+    "voice_speaker": "Diane",
+}
+
+# Seed order matters lightly: scenarios are listed by created_at, so Kimironko
+# stays first for existing tests and the sidebar's default conversation link.
+SCENARIOS = [SCENARIO_KIMIRONKO, SCENARIO_MOTO, SCENARIO_FAMILY_VISIT]
 
 
 async def _upsert_voice(db: AsyncSession, data: dict) -> Voice:
@@ -210,7 +291,8 @@ async def seed(db: AsyncSession) -> dict:
         totals["lessons"] += lessons
         totals["items"] += items
         totals["candos"] += candos
-    await _upsert_scenario(db, SCENARIO_KIMIRONKO)
+    for scenario_data in SCENARIOS:
+        await _upsert_scenario(db, scenario_data)
     await db.commit()
     return totals
 
@@ -224,7 +306,7 @@ async def main() -> None:
             totals = await seed(db)
         print(
             f"Seed complete: {totals['lessons']} lessons, {totals['items']} items, "
-            f"{totals['candos']} can-dos, {len(VOICES)} voices, 1 scenario."
+            f"{totals['candos']} can-dos, {len(VOICES)} voices, {len(SCENARIOS)} scenarios."
         )
     finally:
         await engine.dispose()

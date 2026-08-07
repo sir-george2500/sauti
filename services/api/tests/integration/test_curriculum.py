@@ -98,20 +98,51 @@ class TestVocabDecks:
 
 
 class TestScenarios:
-    async def test_kimironko_scenario_listed(self, client):
+    async def test_a1_scenarios_listed_with_opening_lines(self, client):
         auth = await register_and_login(client)
         r = await client.get("/api/v1/scenarios", headers=auth["headers"])
         assert r.status_code == 200
         scenarios = r.json()
-        assert len(scenarios) == 1
-        s = scenarios[0]
-        assert s["title"] == "Kimironko market run"
-        assert s["persona"]["name"] == "Mukamana"
-        assert s["persona"]["role"] == "vegetable vendor"
-        assert s["min_cefr"] == "A1"
-        assert s["umuco_tip"]
-        assert len(s["goals"]) == 4
-        assert s["voice_id"]
+        titles = [s["title"] for s in scenarios]
+        # A fresh user is A1: both A1 scenarios show, the A2 family visit doesn't.
+        assert titles == ["Kimironko market run", "Urugendo rwa moto"]
+
+        kimironko = scenarios[0]
+        assert kimironko["persona"]["name"] == "Mukamana"
+        assert kimironko["persona"]["role"] == "vegetable vendor"
+        assert kimironko["min_cefr"] == "A1"
+        assert kimironko["umuco_tip"]
+        assert len(kimironko["goals"]) == 4
+        assert kimironko["voice_id"]
+
+        # Contract: every persona carries an opening_line {ky, en} — the
+        # persona's first message, served without an LLM call.
+        for s in scenarios:
+            line = s["persona"]["opening_line"]
+            assert line["ky"] and line["en"]
+
+        moto = scenarios[1]
+        assert moto["persona"]["name"] == "Eric"
+        assert moto["persona"]["opening_line"]["ky"] == "Muraho! Urashaka kujya he?"
+        assert "greet the driver" in moto["goals"]
+
+    async def test_a2_user_sees_family_visit(self, client, pg_url):
+        import psycopg
+
+        auth = await register_and_login(client)
+        with psycopg.connect(pg_url) as conn:
+            conn.execute(
+                "UPDATE sauti.profiles SET placed_level = 'A2' WHERE user_id = %s",
+                (auth["user"]["id"],),
+            )
+            conn.commit()
+        r = await client.get("/api/v1/scenarios", headers=auth["headers"])
+        titles = [s["title"] for s in r.json()]
+        assert titles == ["Kimironko market run", "Urugendo rwa moto", "Gusura umuryango"]
+        family = r.json()[2]
+        assert family["persona"]["name"] == "Mama Chantal"
+        assert family["min_cefr"] == "A2"
+        assert family["persona"]["opening_line"]["ky"].startswith("Mwiriwe neza!")
 
 
 class TestSessionToday:
