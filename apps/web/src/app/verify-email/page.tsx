@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { verifyEmail } from "@/lib/api/endpoints";
 import { ApiError } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth";
 import { btnPrimary, ErrorNote } from "@/components/ui";
 
 function messageFor(err: unknown): string {
@@ -21,6 +22,7 @@ function messageFor(err: unknown): string {
 
 function VerifyEmailInner() {
   const params = useSearchParams();
+  const { refresh } = useAuth();
   const token = params.get("token") ?? "";
   const [state, setState] = useState<"working" | "success" | "error">("working");
   const [message, setMessage] = useState("");
@@ -37,12 +39,18 @@ function VerifyEmailInner() {
       return;
     }
     verifyEmail(token)
-      .then(() => setState("success"))
+      .then(async () => {
+        // Refetch /me so a signed-in session's verify banner clears on the
+        // client-side nav back into the app (no full reload needed). The
+        // page-load getMe races this POST, so its result may be stale.
+        await refresh();
+        setState("success");
+      })
       .catch((err) => {
         setState("error");
         setMessage(messageFor(err));
       });
-  }, [token]);
+  }, [token, refresh]);
 
   if (state === "working") {
     return (
