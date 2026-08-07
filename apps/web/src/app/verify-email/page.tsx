@@ -31,13 +31,8 @@ function VerifyEmailInner() {
   const started = useRef(false);
 
   useEffect(() => {
-    if (started.current) return;
+    if (!token || started.current) return;
     started.current = true;
-    if (!token) {
-      setState("error");
-      setMessage("This link is missing its token — use the button in your email.");
-      return;
-    }
     verifyEmail(token)
       .then(async () => {
         // Refetch /me so a signed-in session's verify banner clears on the
@@ -52,6 +47,20 @@ function VerifyEmailInner() {
       });
   }, [token, refresh]);
 
+  // A missing token is knowable at render time — no effect/state needed.
+  if (!token) {
+    return (
+      <div className="grid gap-4">
+        <ErrorNote
+          message="This link is missing its token — use the button in your email."
+          testid="verify-error"
+        />
+        <Link href="/" className={`justify-self-start ${btnPrimary}`} data-testid="verify-home">
+          Back to Sauti
+        </Link>
+      </div>
+    );
+  }
   if (state === "working") {
     return (
       <p className="text-sm text-ink-soft" data-testid="verify-working">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { resendVerification } from "@/lib/api/endpoints";
 import { useAuth } from "@/lib/auth";
 
@@ -15,22 +15,31 @@ import { useAuth } from "@/lib/auth";
 
 const DISMISS_KEY = "sauti-verify-banner-dismissed";
 
+// sessionStorage is an external store: read it via useSyncExternalStore so the
+// server/hydration pass renders nothing (snapshot "dismissed") and the client
+// re-renders with the real value — no dismissed-banner flash, no effect.
+let dismissListeners: Array<() => void> = [];
+function subscribeDismissed(cb: () => void): () => void {
+  dismissListeners.push(cb);
+  return () => {
+    dismissListeners = dismissListeners.filter((l) => l !== cb);
+  };
+}
+const getDismissed = () => window.sessionStorage.getItem(DISMISS_KEY) === "1";
+const getDismissedServer = () => true;
+function dismissBanner(): void {
+  window.sessionStorage.setItem(DISMISS_KEY, "1");
+  dismissListeners.forEach((l) => l());
+}
+
 export function VerifyEmailBanner() {
   const { me } = useAuth();
-  // Render nothing until sessionStorage has been consulted on the client —
-  // avoids an SSR/hydration flash of a banner the user already dismissed.
-  const [ready, setReady] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const dismissed = useSyncExternalStore(subscribeDismissed, getDismissed, getDismissedServer);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "failed">(
     "idle",
   );
 
-  useEffect(() => {
-    setDismissed(window.sessionStorage.getItem(DISMISS_KEY) === "1");
-    setReady(true);
-  }, []);
-
-  if (!ready || dismissed || !me || me.email_verified !== false) return null;
+  if (dismissed || !me || me.email_verified !== false) return null;
 
   const resend = async () => {
     setResendState("sending");
@@ -74,10 +83,7 @@ export function VerifyEmailBanner() {
         type="button"
         aria-label="Dismiss"
         data-testid="verify-dismiss"
-        onClick={() => {
-          window.sessionStorage.setItem(DISMISS_KEY, "1");
-          setDismissed(true);
-        }}
+        onClick={dismissBanner}
         className="flex-none cursor-pointer px-1 text-base leading-none transition-colors hover:text-accent"
       >
         ×
