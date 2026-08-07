@@ -271,6 +271,8 @@ export interface PronReport {
   overall: number; // 0..100
   phonemes: PronPhoneme[];
   tone_flags: string[];
+  /** What the recognizer heard — rendered as "We heard: …". */
+  transcript?: string | null;
 }
 
 export interface UploadUrlRequest {

@@ -50,6 +50,9 @@ test("pronunciation: native audio, record a take, score renders", async ({
   expect(overall).toBeGreaterThanOrEqual(60); // stub range is 60..95
   expect(overall).toBeLessThanOrEqual(95);
 
+  // "We heard: …" transcript line (stub STT returns a canned deterministic phrase).
+  await expect(page.getByTestId("pron-transcript")).toContainText("We heard:");
+
   // Per-syllable feedback chips.
   await expect(page.getByTestId("phoneme-chip").first()).toBeVisible();
   await expect(page.getByTestId("pron-score")).toContainText("Take 1");

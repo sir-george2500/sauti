@@ -133,7 +133,7 @@ export default function PronunciationPage({
             <AudioButton itemId={item.id} size="sm" testid="play-native" />
             <Waveform bars={NATIVE_BARS} color="bg-accent" />
             <span className="flex-none font-mono text-[10px] text-ink-soft uppercase">
-              Diane · Native
+              Native · Kigali
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -194,6 +194,12 @@ export default function PronunciationPage({
             </div>
           ) : null}
         </div>
+
+        {report?.transcript ? (
+          <p className="mt-3 text-sm text-ink-soft" data-testid="pron-transcript">
+            We heard: <span className="ky font-semibold text-ink">“{report.transcript}”</span>
+          </p>
+        ) : null}
 
         {report ? (
           <div className="mt-4 border-t border-line pt-5">

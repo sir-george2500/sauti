@@ -19,6 +19,7 @@ from sauti.schemas.learning import (
     CandoSection,
     ConsistencyOut,
     ProgressOut,
+    RecordingOut,
     SkillEstimateOut,
     TotalsOut,
     VocabDeckItemsOut,
@@ -117,6 +118,44 @@ async def progress(user: CurrentUser, db: DbDep) -> ProgressOut:
         ),
         eta=eta,
     )
+
+
+@router.get("/progress/recordings")
+async def progress_recordings(
+    user: CurrentUser, db: DbDep, settings: SettingsDep
+) -> list[RecordingOut]:
+    """Chronological archive of the user's kept speaking takes.
+
+    Design: the Progress page's "Hear yourself change" block — week-1 vs now.
+    One query (attempts ⋈ items); audio_ref resolves to the same public route
+    the speech upload flow serves recordings from (GET /speech/audio/{ref}).
+    """
+    rows = (
+        await db.execute(
+            select(Attempt.id, Attempt.ts, Attempt.audio_ref, Attempt.score, Item.sentence)
+            .join(Item, Item.id == Attempt.item_id)
+            .where(
+                Attempt.user_id == user.id,
+                Attempt.mode == "speak",
+                Attempt.audio_ref.is_not(None),
+            )
+            .order_by(Attempt.ts, Attempt.id)
+        )
+    ).all()
+    if not rows:
+        return []
+    first_day = rows[0].ts.date()
+    return [
+        RecordingOut(
+            id=r.id,
+            ts=r.ts,
+            day_number=(r.ts.date() - first_day).days + 1,
+            item_sentence=r.sentence,
+            audio_url=f"{settings.app_base_url}/api/v1/speech/audio/{r.audio_ref}",
+            score=r.score,
+        )
+        for r in rows
+    ]
 
 
 @router.get("/vocab/decks")

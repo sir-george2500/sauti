@@ -65,6 +65,17 @@ class ProgressOut(BaseModel):
     eta: RoadmapEta | None = None
 
 
+class RecordingOut(BaseModel):
+    """One kept speaking take — GET /progress/recordings ('Hear yourself change')."""
+
+    id: uuid.UUID
+    ts: datetime
+    day_number: int  # days since the user's first kept recording, 1-based
+    item_sentence: str
+    audio_url: str  # playable as-is by an <audio> element
+    score: float  # 0..1
+
+
 class VocabDeckSample(BaseModel):
     sentence: str
     gloss: str
