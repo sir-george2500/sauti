@@ -135,6 +135,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Convenience alias outside the versioned prefix.
     app.include_router(health.router)
 
+    # Test-only surface (captured-mail readback for e2e) — fake-AI mode only.
+    if settings.sauti_fake_ai:
+        from sauti.routers import testonly
+
+        app.include_router(testonly.router)
+
     return app
 
 
