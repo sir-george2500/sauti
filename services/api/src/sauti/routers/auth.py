@@ -15,12 +15,22 @@ from sqlalchemy import select, update
 
 from sauti.deps import CurrentUser, DbDep, MailerDep, SettingsDep, auth_rate_limit
 from sauti.errors import ApiError
-from sauti.models import Course, EmailVerificationToken, Profile, RefreshToken, User
+from sauti.models import (
+    Course,
+    EmailVerificationToken,
+    PasswordResetToken,
+    Profile,
+    RefreshToken,
+    User,
+)
+from sauti.rate_limit import client_key
 from sauti.schemas.auth import (
+    ForgotPasswordIn,
     LoginIn,
     MeOut,
     ProfileOut,
     RegisterIn,
+    ResetPasswordIn,
     TokenOut,
     UserOut,
     VerifyEmailIn,
@@ -206,6 +216,90 @@ async def resend_verification(
         await db.commit()
         _queue_verification_mail(background, mailer, settings, user.email, raw_token)
     # Already verified: same generic 200 no-op — nothing to learn here.
+    return {"ok": True}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordIn,
+    db: DbDep,
+    settings: SettingsDep,
+    mailer: MailerDep,
+    background: BackgroundTasks,
+) -> dict:
+    # Tighter per-IP cap on top of the router-wide auth limit — this
+    # endpoint sends real mail.
+    ip_key = client_key(request, trust_forwarded_for=settings.trust_proxy_headers)
+    request.app.state.rate_limiter.enforce(
+        f"email:{ip_key}", settings.rate_limit_email_max
+    )
+    user = await db.scalar(select(User).where(User.email == body.email.lower()))
+    if user is not None:
+        raw, token_hash = new_email_token()
+        db.add(
+            PasswordResetToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=_utcnow() + timedelta(hours=settings.reset_token_ttl_hours),
+            )
+        )
+        await db.commit()
+        link = f"{settings.app_frontend_url}/reset-password?token={raw}"
+        background.add_task(
+            send_mail_safely,
+            mailer,
+            to=user.email,
+            subject="Reset your password — Sauti",
+            text=(
+                "Muraho!\n\n"
+                "Someone (hopefully you) asked to reset the password for this "
+                "Sauti account. Choose a new one here:\n\n"
+                f"{link}\n\n"
+                f"The link works for {settings.reset_token_ttl_hours} hour(s) and "
+                "can be used once. If this wasn't you, ignore this email — your "
+                "password is unchanged.\n\n"
+                "— Sauti"
+            ),
+        )
+    # Identical 200 whether or not the account exists: no email enumeration.
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+async def reset_password(body: ResetPasswordIn, db: DbDep) -> dict:
+    if body.new_password.lower() in COMMON_PASSWORDS:
+        raise ApiError(422, "WEAK_PASSWORD", "That password is too common — pick another")
+    row = await db.scalar(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == hash_email_token(body.token)
+        )
+    )
+    if row is None:
+        raise ApiError(400, "INVALID_TOKEN", "That reset link isn't valid — request a new one.")
+    if row.used_at is not None:
+        raise ApiError(410, "TOKEN_USED", "That reset link was already used — request a new one.")
+    if _aware(row.expires_at) <= _utcnow():
+        raise ApiError(410, "TOKEN_EXPIRED", "That reset link has expired — request a new one.")
+    now = _utcnow()
+    # Consume this token AND any other outstanding reset links for the user.
+    await db.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.user_id == row.user_id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=now)
+    )
+    await db.execute(
+        update(User)
+        .where(User.id == row.user_id)
+        .values(password_hash=hash_password(body.new_password))
+    )
+    # A reset signs out every device: revoke ALL the user's refresh families.
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == row.user_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    await db.commit()
     return {"ok": True}
 
 
