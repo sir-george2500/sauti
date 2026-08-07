@@ -5,7 +5,8 @@ import type { QuickCheck } from "@/lib/api/types";
 
 /**
  * One-question multiple choice with feedback — used by the lesson quick
- * check and the listening comprehension question.
+ * check and the listening comprehension question. Option treatment follows
+ * the mockup: answered → correct turns green, a wrong pick turns terracotta.
  */
 export function Mcq({
   quickCheck,
@@ -23,17 +24,21 @@ export function Mcq({
   return (
     <div>
       <p className="ky text-lg">{quickCheck.question}</p>
-      <div className="mt-4 grid gap-2">
+      <div className="mt-3.5 grid gap-2">
         {quickCheck.options.map((o, i) => {
           let cls = "border-line bg-card hover:border-accent";
-          if (answered && i === picked) {
-            cls = o.correct
-              ? "border-accent bg-accent-soft"
-              : "border-accent/40 bg-cream opacity-80";
-          } else if (answered && o.correct) {
-            cls = "border-accent bg-accent-soft";
+          let mark: string | null = null;
+          let markCls = "";
+          if (answered && o.correct) {
+            cls = "border-green bg-green-soft";
+            mark = "✓";
+            markCls = "text-green";
+          } else if (answered && i === picked) {
+            cls = "border-ember bg-accent-soft";
+            mark = "×";
+            markCls = "text-accent";
           } else if (answered) {
-            cls = "border-line bg-card opacity-60";
+            cls = "border-line bg-card";
           }
           return (
             <button
@@ -45,12 +50,12 @@ export function Mcq({
                 setPicked(i);
                 onAnswered?.(o.correct);
               }}
-              className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${cls}`}
+              className={`flex cursor-pointer items-center gap-2.5 rounded-btn border-[1.5px] px-4 py-3 text-left transition-colors disabled:cursor-default ${cls}`}
             >
-              <span className="ky">{o.text}</span>
-              {answered && (i === picked || o.correct) ? (
-                <span className="text-sm" aria-hidden>
-                  {o.correct ? "✓" : "✕"}
+              <span className="ky flex-1 text-base">{o.text}</span>
+              {mark ? (
+                <span className={`text-[13px] font-bold ${markCls}`} aria-hidden>
+                  {mark}
                 </span>
               ) : null}
             </button>
@@ -58,7 +63,10 @@ export function Mcq({
         })}
       </div>
       {answered ? (
-        <p className="mt-3 text-sm text-ink-soft" data-testid="mcq-feedback">
+        <p
+          className={`mt-3 text-[13.5px] font-semibold ${correct ? "text-green" : "text-accent"}`}
+          data-testid="mcq-feedback"
+        >
           {correct
             ? "Yego! That's the one — the prefix does the work."
             : `Not quite — the natural choice is “${quickCheck.options.find((o) => o.correct)?.text ?? ""}”. Rest easy, it comes back in review.`}

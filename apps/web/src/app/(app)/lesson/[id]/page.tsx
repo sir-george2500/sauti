@@ -7,7 +7,18 @@ import { getLesson, postAttempt } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
 import { Markdown } from "@/components/Markdown";
 import { Mcq } from "@/components/Mcq";
-import { Card, ErrorNote, Kicker, LoadingNote, PageTitle, VoiceCredit } from "@/components/ui";
+import {
+  btnGhost,
+  btnPrimary,
+  Card,
+  CardLabel,
+  ErrorNote,
+  Kicker,
+  LoadingNote,
+  PageTitle,
+} from "@/components/ui";
+
+const VOICES = ["Diane", "Emmanuel"] as const;
 
 export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -29,8 +40,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const situationTag = items[0]?.tags?.[0];
 
   return (
-    <article className="grid gap-6" data-testid="lesson">
-      <div>
+    <article className="grid gap-3.5" data-testid="lesson">
+      <div className="mb-2">
         <Kicker>
           {levelCefr} · {unitTitle} · Lesson {lessonNumber} of {lessonCount}
         </Kicker>
@@ -45,22 +56,18 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
       {items.length > 0 ? (
         <Card testid="hear-it-used">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="ky text-xl font-semibold">Hear it used</h2>
-            <VoiceCredit name="Diane" />
-          </div>
-          <ul className="mt-4 grid gap-3">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-center gap-4 rounded-xl border border-line bg-paper px-4 py-3"
-                data-testid="example-row"
-              >
+          <CardLabel>Hear it used</CardLabel>
+          <ul className="mt-4 grid gap-4">
+            {items.map((item, i) => (
+              <li key={item.id} className="flex items-center gap-3.5" data-testid="example-row">
                 <AudioButton itemId={item.id} label={`Play “${item.sentence}”`} />
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="ky text-lg">{item.sentence}</p>
-                  <p className="text-sm text-ink-soft">{item.gloss}</p>
+                  <p className="mt-0.5 text-[12.5px] text-ink-soft">{item.gloss}</p>
                 </div>
+                <span className="flex-none font-mono text-[10px] text-ink-faint uppercase">
+                  {VOICES[i % VOICES.length]}
+                </span>
               </li>
             ))}
           </ul>
@@ -68,16 +75,21 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       ) : null}
 
       {lesson.culture_note ? (
-        <Card testid="umuco-note" className="border-accent/25 bg-accent-soft">
-          <Kicker>Umuco · Culture</Kicker>
-          <p className="mt-2 leading-relaxed">{lesson.culture_note}</p>
-        </Card>
+        <section
+          data-testid="umuco-note"
+          className="rounded-card border border-amber-line bg-amber-soft px-5 py-[18px] sm:px-[22px]"
+        >
+          <p className="text-[10.5px] font-bold tracking-[0.13em] text-amber-text uppercase">
+            Umuco · Culture
+          </p>
+          <p className="mt-1.5 text-sm leading-[1.6] text-amber-deep">{lesson.culture_note}</p>
+        </section>
       ) : null}
 
       {lesson.quick_check ? (
         <Card testid="quick-check">
-          <h2 className="ky text-xl font-semibold">Quick check</h2>
-          <div className="mt-4">
+          <CardLabel>Quick check</CardLabel>
+          <div className="mt-1.5">
             <Mcq
               quickCheck={lesson.quick_check}
               onAnswered={(correct) => {
@@ -95,18 +107,14 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         </Card>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <Link
-          href="/roadmap"
-          className="text-sm text-ink-soft transition-colors hover:text-ink"
-          data-testid="back-to-roadmap"
-        >
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+        <Link href="/roadmap" className={btnGhost} data-testid="back-to-roadmap">
           ← Back to roadmap
         </Link>
         <Link
           href={situationTag ? `/vocab/${encodeURIComponent(situationTag)}` : "/vocab"}
           data-testid="practice-words"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent-deep"
+          className={btnPrimary}
         >
           Practice these words →
         </Link>
