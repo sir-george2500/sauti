@@ -37,6 +37,32 @@ def item(sentence: str, gloss: str, tags: list[str], tones: dict[int, str] | Non
     return {"sentence": sentence, "gloss": gloss, "tags": tags, "phoneme_ref": syl(sentence, tones)}
 
 
+def q(
+    kind: str,
+    question: str,
+    correct: str,
+    wrong: list[str],
+    explain: str,
+    item: str | None = None,
+) -> dict:
+    """One quiz question. kind: grammar | vocab | usage | culture.
+
+    `item` is the sentence of a lesson item the question drills (resolved to an
+    item_id at serialization time, so attempts feed that item's SRS state).
+    Options are authored correct-first; the API shuffles them deterministically.
+    """
+    assert kind in ("grammar", "vocab", "usage", "culture"), kind
+    assert len(wrong) == 3, f"need exactly 3 distractors: {question}"
+    return {
+        "kind": kind,
+        "question": question,
+        "options": [{"text": correct, "correct": True}]
+        + [{"text": w, "correct": False} for w in wrong],
+        "explanation": explain,
+        "item": item,
+    }
+
+
 # ---------------------------------------------------------------------------
 # A1 — Unit 1 · Greetings & people
 # ---------------------------------------------------------------------------
@@ -74,6 +100,64 @@ or to an elder — the same singular/plural respect switch.""",
         item("Murabeho.", "Goodbye.", ["greetings"]),
         item("Urakoze cyane.", "Thank you very much.", ["greetings"], {2: "H"}),
         item("Murakaza neza!", "Welcome!", ["greetings"]),
+    ],
+    "quiz": [
+        q(
+            "usage",
+            "It is 8 in the morning and you meet your neighbour. The natural greeting is…",
+            "Mwaramutse!",
+            ["Mwiriwe neza.", "Ijoro ryiza.", "Murabeho."],
+            "Mwaramutse — “you made it through the night” — is the morning greeting; "
+            "Mwiriwe belongs to the afternoon and evening.",
+            item="Mwaramutse!",
+        ),
+        q(
+            "grammar",
+            "You want to thank ONE close friend. The right form is…",
+            "Urakoze",
+            ["Murakoze", "Mwaramutse", "Murabeho"],
+            "Urakoze is the singular “thank you”; Murakoze is the plural — used for "
+            "several people or as respect to an elder.",
+            item="Urakoze cyane.",
+        ),
+        q(
+            "grammar",
+            "To one close friend in the morning you may drop to the singular:",
+            "Waramutse",
+            ["Mwaramutse", "Mwiriwe", "Muraho"],
+            "The singular strips the mwa-/mu- plural prefix: Mwaramutse → Waramutse "
+            "— but when unsure, the plural of respect is never wrong.",
+        ),
+        q(
+            "vocab",
+            "Which phrase means “Welcome!”?",
+            "Murakaza neza!",
+            ["Murabeho.", "Ijoro ryiza.", "Mwiriwe neza."],
+            "Murakaza neza literally wishes that you arrive well — the greeting for "
+            "someone reaching your home or town.",
+            item="Murakaza neza!",
+        ),
+        q(
+            "vocab",
+            "“Ijoro ryiza” means…",
+            "Good night.",
+            ["Good morning.", "Goodbye.", "Thank you very much."],
+            "Ijoro is “night” and ryiza (“good”) agrees with it — the parting phrase "
+            "at the end of the evening.",
+            item="Ijoro ryiza.",
+        ),
+        q(
+            "culture",
+            "Why do Rwandans greet one elder with plural forms like Mwaramutse?",
+            "The plural is the mark of respect.",
+            [
+                "Elders are assumed to be accompanied.",
+                "The singular forms are archaic.",
+                "The plural is easier to pronounce.",
+            ],
+            "Addressing one elder with mwa-/mu- honours them; the singular to an "
+            "elder sounds abrupt.",
+        ),
     ],
 }
 
@@ -113,6 +197,68 @@ there is no word for “?”.""",
         item("Bite se?", "What's up? (informal)", ["greetings"], {1: "R"}),
         item("Ni byiza.", "All good.", ["greetings"]),
     ],
+    "quiz": [
+        q(
+            "usage",
+            "A colleague asks “Amakuru?”. The natural reply is…",
+            "Ni meza, urakoze.",
+            ["Murakaza neza!", "Ni angahe?", "Ijoro ryiza."],
+            "Amakuru (“the news”) takes the class-6 reply ni meza — “(the news) is "
+            "good” — usually rounded off with thanks.",
+            item="Ni meza, urakoze.",
+        ),
+        q(
+            "grammar",
+            "Amakuru is class 6 (ama-). Which agreement is correct?",
+            "Amakuru ni meza.",
+            ["Amakuru ni byiza.", "Amakuru ni nziza.", "Amakuru ni mwiza."],
+            "Adjectives take the owning noun's class prefix: ma- + -iza gives meza; "
+            "byiza and nziza belong to other classes.",
+        ),
+        q(
+            "grammar",
+            "“How is YOUR news?” — the correct possessive is…",
+            "Amakuru yawe?",
+            ["Amakuru wawe?", "Amakuru byawe?", "Amakuru zawe?"],
+            "Possessives also agree: class 6 takes the ya- connector, so “your” "
+            "after amakuru is yawe.",
+            item="Amakuru yawe?",
+        ),
+        q(
+            "vocab",
+            "The informal “What's up?” between friends is…",
+            "Bite se?",
+            ["Umeze ute?", "Amakuru yawe?", "Murabeho."],
+            "Bite se is the casual opener among friends, typically answered ni byiza "
+            "— keep Amakuru for elders and new acquaintances.",
+            item="Bite se?",
+        ),
+        q(
+            "grammar",
+            "What turns “Amakuru” into a question in speech?",
+            "A rise in pitch on the final syllable",
+            [
+                "The particle “se” is required",
+                "The verb moves to the end",
+                "The prefix changes to aya-",
+            ],
+            "Kinyarwanda has no question word for “?” — a final rising pitch alone "
+            "marks the question.",
+            item="Amakuru?",
+        ),
+        q(
+            "culture",
+            "With an elder, answering just “ni meza” and walking on reads as…",
+            "Cold — the full exchange about family and health matters.",
+            [
+                "Polite — it keeps the greeting efficient.",
+                "Expected — elders dislike small talk.",
+                "Rude only in Kigali.",
+            ],
+            "Amakuru? is not small talk to rush past: news of family, health and "
+            "the harvest matters, especially with elders.",
+        ),
+    ],
 }
 
 A1_U1_L3 = {
@@ -147,6 +293,63 @@ Ask a name with **nde** (“who”): *Witwa nde?* — “What (lit. who) are you
         item("Uva he?", "Where are you from?", ["greetings"], {2: "R"}),
         item("Nishimiye kukumenya.", "I am pleased to meet you.", ["greetings"]),
         item("Uyu ni inshuti yanjye.", "This is my friend.", ["greetings"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“I am called…” takes which subject prefix on -itwa?",
+            "Nitwa",
+            ["Witwa", "Yitwa", "Twitwa"],
+            "The subject lives on the verb: n- = I, w- = you, y- = he/she — so “my "
+            "name is…” is Nitwa.",
+            item="Nitwa Ange.",
+        ),
+        q(
+            "grammar",
+            "“HE is called Eric” is…",
+            "Yitwa Eric.",
+            ["Witwa Eric.", "Nitwa Eric.", "Bitwa Eric."],
+            "Before the vowel stem -itwa, the he/she prefix a- becomes y-: yitwa.",
+        ),
+        q(
+            "grammar",
+            "“I live in Kigali” is…",
+            "Ntuye i Kigali.",
+            ["Ntuye mu Kigali.", "Ntuye ku Kigali.", "Ntuye Kigali."],
+            "Place names take the little locative i (Ntuye i Kigali); mu is for "
+            "countries like mu Rwanda.",
+            item="Ntuye i Kigali.",
+        ),
+        q(
+            "vocab",
+            "To ask someone's name you say…",
+            "Witwa nde?",
+            ["Uva he?", "Umeze ute?", "Ni saa ngahe?"],
+            "Witwa nde? is literally “you are called who?” — nde asks “who”, he asks "
+            "“where”, ute asks “how”.",
+            item="Witwa nde?",
+        ),
+        q(
+            "usage",
+            "You have just been introduced to someone. You say…",
+            "Nishimiye kukumenya.",
+            ["Ndazimiye.", "Murabeho.", "Ni byose, urakoze."],
+            "Nishimiye kukumenya — “I am pleased to meet you” — is the warm close of "
+            "an introduction; ndazimiye means “I'm lost”.",
+            item="Nishimiye kukumenya.",
+        ),
+        q(
+            "culture",
+            "You like the name Keza. Asking what it means is…",
+            "A compliment — many Rwandan names are meaningful words.",
+            [
+                "An intrusion into family matters.",
+                "Acceptable only between close friends.",
+                "Odd — names have no meanings.",
+            ],
+            "Rwandan given names often carry meanings — Keza (“beautiful”), Ishimwe "
+            "(“gratitude”), Mugisha (“blessing”) — and asking about them honours the name.",
+        ),
     ],
 }
 
@@ -186,6 +389,69 @@ and **aba-** drops its *a* — sound changes you will see across the language.
         item("Abantu benshi baraza.", "Many people are coming.", ["greetings", "grammar"]),
         item("Umwarimu yigisha Ikinyarwanda.", "The teacher teaches Kinyarwanda.", ["greetings", "grammar"]),
         item("Umwana umwe, abana babiri.", "One child, two children.", ["greetings", "grammar"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "One child is umwana; several children are…",
+            "abana",
+            ["abaana", "ubwana", "abantu"],
+            "Before the vowel stem -ana, aba- drops its final a: abana — ubwana "
+            "means “childhood” and abantu means “people”.",
+            item="Umwana umwe, abana babiri.",
+        ),
+        q(
+            "grammar",
+            "“The woman is speaking” — which is correct?",
+            "Umugore aravuga.",
+            ["Umugore baravuga.", "Umugore iravuga.", "Umugore uravuga."],
+            "Class 1 subjects (umu-) take the verb prefix a-: umugore a-ra-vuga; "
+            "ba- is the class 2 (plural) prefix.",
+            item="Umugore aravuga.",
+        ),
+        q(
+            "grammar",
+            "Which sentence uses the present -ra- correctly?",
+            "Abana biga ku ishuri.",
+            ["Abana bariga ku ishuri.", "Umugore vuga.", "Umwana sinziriye."],
+            "-ra- appears only when the verb ends the sentence; with “ku ishuri” "
+            "following, it drops: biga, not bariga.",
+            item="Abana biga ku ishuri.",
+        ),
+        q(
+            "vocab",
+            "“Teacher” in Kinyarwanda is…",
+            "umwarimu",
+            ["umunyeshuri", "umugabo", "umuntu"],
+            "Umwarimu is the teacher; umunyeshuri is the student, umugabo a man, "
+            "umuntu a person.",
+            item="Umwarimu yigisha Ikinyarwanda.",
+        ),
+        q(
+            "vocab",
+            "“Abantu benshi baraza.” means…",
+            "Many people are coming.",
+            [
+                "The people have arrived.",
+                "A few people are coming.",
+                "Many children are coming.",
+            ],
+            "Abantu = people, benshi = many (agreeing with aba-), baraza = they are "
+            "coming — present, not past.",
+            item="Abantu benshi baraza.",
+        ),
+        q(
+            "culture",
+            "The proverb “Umuntu ni abantu” expresses that…",
+            "A person is a person through other people.",
+            [
+                "One person can stand in for many.",
+                "People are hard to predict.",
+                "A person must earn adulthood.",
+            ],
+            "“A person is people”: we are who we are through others — the aba- "
+            "plural as a worldview, not just grammar.",
+        ),
     ],
 }
 
@@ -227,6 +493,67 @@ you have, use **-fite**: *Mfite abavandimwe babiri* — “I have two siblings�
         item("Nyogokuru atuye mu cyaro.", "My grandmother lives in the countryside.", ["family"]),
         item("Turi umuryango munini.", "We are a big family.", ["family"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "The kinship words mama and data already mean…",
+            "my mother / my father",
+            [
+                "mother / father in general",
+                "any older woman / man",
+                "grandmother / grandfather",
+            ],
+            "Kinship words carry a built-in “my”: mama = my mother; “your mother” "
+            "needs the possessive — mama wawe.",
+        ),
+        q(
+            "vocab",
+            "“My grandmother” is…",
+            "nyogokuru",
+            ["sogokuru", "umubyeyi", "umukobwa"],
+            "Nyogokuru is my grandmother; sogokuru my grandfather, umubyeyi a "
+            "parent, umukobwa a girl or daughter.",
+            item="Nyogokuru atuye mu cyaro.",
+        ),
+        q(
+            "grammar",
+            "“I have two siblings” is…",
+            "Mfite abavandimwe babiri.",
+            [
+                "Mfite abavandimwe kabiri.",
+                "Mfite umuvandimwe babiri.",
+                "Mfite abavandimwe bibiri.",
+            ],
+            "Numbers agree with the noun's class: aba- takes babiri; kabiri is the "
+            "bare counting form and bibiri belongs to the ibi- class.",
+            item="Mfite abavandimwe babiri.",
+        ),
+        q(
+            "vocab",
+            "“Umukobwa” means…",
+            "girl, daughter",
+            ["boy, son", "sibling", "parent"],
+            "Umukobwa is a girl or daughter; the boy or son is umuhungu.",
+            item="Umukobwa wanjye yitwa Keza.",
+        ),
+        q(
+            "usage",
+            "To introduce your mother you say…",
+            "Uyu ni mama.",
+            ["Uyu ni data.", "Ni meza.", "Nitwa mama."],
+            "Uyu ni… (“this is…”) points someone out — and mama already means “my "
+            "mother”, no possessive needed.",
+            item="Uyu ni mama.",
+        ),
+        q(
+            "culture",
+            "In a Rwandan umuryango, your aunt may well be called…",
+            "mama wacu — “our mother”",
+            ["nyogokuru", "umukobwa", "inshuti"],
+            "Umuryango means both family and extended lineage: aunts are often "
+            "“mothers” and cousins simply siblings.",
+        ),
+    ],
 }
 
 A1_U2_L2 = {
@@ -264,6 +591,63 @@ yanjye…* depending on what is owned. Learn possessives **inside phrases**
         item("Mama wawe ameze ute?", "How is your mother?", ["family"], {5: "R"}),
         item("Abavandimwe be batuye i Huye.", "His siblings live in Huye.", ["family"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "“My house” is…",
+            "inzu yanjye",
+            ["inzu wanjye", "inzu cyanjye", "inzu banjye"],
+            "The possessive's prefix comes from the owned noun: class 9 (in-) takes "
+            "ya-, so inzu yanjye.",
+            item="Inzu yanjye ni nto.",
+        ),
+        q(
+            "grammar",
+            "“Your book” is…",
+            "igitabo cyawe",
+            ["igitabo wawe", "igitabo yawe", "igitabo bawe"],
+            "Igitabo is class 7 (iki-), whose connector is cya-: igitabo cyawe.",
+            item="Igitabo cyawe",
+        ),
+        q(
+            "grammar",
+            "“My children” is…",
+            "abana banjye",
+            ["abana wanjye", "abana yanjye", "abana cyanjye"],
+            "Class 2 (aba-) takes the ba- connector: abana banjye — “my” is a "
+            "different word for every class.",
+            item="Abana banjye",
+        ),
+        q(
+            "vocab",
+            "“Umuryango wacu” means…",
+            "our family",
+            ["my family", "your family", "their family"],
+            "The stem -acu is “our”; -anjye my, -awe your, -abo their.",
+            item="Umuryango wacu",
+        ),
+        q(
+            "usage",
+            "You meet a friend and ask after his mother:",
+            "Mama wawe ameze ute?",
+            ["Mama wanjye ameze ute?", "Data wawe ni nde?", "Mama wawe ni angahe?"],
+            "Mama wawe = “your mother”, ameze ute = “how is she doing” — wanjye "
+            "would ask about your own mother.",
+            item="Mama wawe ameze ute?",
+        ),
+        q(
+            "culture",
+            "Rwandans habitually say “urugo rwacu” rather than “urugo rwanjye” because…",
+            "“Our” reflects the shared household — -anjye can sound individualistic.",
+            [
+                "rwanjye is grammatically wrong.",
+                "rwacu is easier to pronounce.",
+                "-anjye is reserved for objects.",
+            ],
+            "“Our” beats “my”: Rwandans say umuryango wacu, urugo rwacu even about "
+            "their own household.",
+        ),
+    ],
 }
 
 A1_U2_L3 = {
@@ -299,6 +683,64 @@ mu nzu* (Mother is in the house).""",
         item("Abana bakinira ku rugo.", "The children are playing in the yard.", ["family"]),
         item("Icyumba cyanjye ni gito.", "My room is small.", ["family"]),
         item("Urugo rwacu ruri hafi y'isoko.", "Our home is near the market.", ["family"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“In the kitchen” — igikoni after mu becomes…",
+            "mu gikoni",
+            ["mu igikoni", "i gikoni", "ku igikoni"],
+            "After mu and ku the noun drops its initial vowel: i-gikoni → mu "
+            "gikoni; the locative i is for place names.",
+            item="Ndi mu gikoni.",
+        ),
+        q(
+            "grammar",
+            "“I am in the kitchen” is…",
+            "Ndi mu gikoni.",
+            ["Ni mu gikoni.", "Nitwa mu gikoni.", "Mfite mu gikoni."],
+            "Being somewhere uses -ri with a subject prefix: n-di (“I am”); bare ni "
+            "only identifies (“it is”).",
+            item="Ndi mu gikoni.",
+        ),
+        q(
+            "vocab",
+            "“Icyumba” means…",
+            "room",
+            ["kitchen", "house", "doorway"],
+            "Icyumba (plural ibyumba) is a room; the kitchen is igikoni and the "
+            "house inzu.",
+            item="Icyumba cyanjye ni gito.",
+        ),
+        q(
+            "vocab",
+            "Which word means both “doorway” and “family”?",
+            "umuryango",
+            ["urugo", "inzu", "igikoni"],
+            "Umuryango is the doorway you pass through and the family/lineage — the "
+            "same word for both thresholds of belonging.",
+        ),
+        q(
+            "usage",
+            "“Where is Mother?” — “She is in the house”:",
+            "Mama ari mu nzu.",
+            ["Mama ni mu nzu.", "Mama iri mu nzu.", "Mama ari ku nzu."],
+            "Class-1 mama takes a- + -ri (ari), and mu means inside: mu nzu, with "
+            "inzu's initial vowel dropped.",
+            item="Mama ari mu nzu.",
+        ),
+        q(
+            "culture",
+            "The difference between inzu and urugo:",
+            "Inzu is the building; urugo is the homestead and the life in it.",
+            [
+                "They are exact synonyms.",
+                "Urugo is a modern word for apartment.",
+                "Inzu means compound, urugo means house.",
+            ],
+            "Traditionally urugo is the fenced compound — a married adult “has an "
+            "urugo”, meaning a household — while inzu is just the structure.",
+        ),
     ],
 }
 
@@ -340,6 +782,68 @@ market”). This conjoint/disjoint switch is the heartbeat of Kinyarwanda rhythm
         item("Ni umwarimu.", "She is a teacher.", ["family", "grammar"]),
         item("Ndakora.", "I am working.", ["family", "grammar"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "“I am twenty” is said with “have”:",
+            "Mfite imyaka makumyabiri.",
+            [
+                "Ndi imyaka makumyabiri.",
+                "Ni imyaka makumyabiri.",
+                "Mba imyaka makumyabiri.",
+            ],
+            "Age is possessed in Kinyarwanda — literally “I have twenty years”, "
+            "with -fite, never with “to be”.",
+            item="Mfite imyaka makumyabiri.",
+        ),
+        q(
+            "grammar",
+            "“THEY have” is…",
+            "bafite",
+            ["dufite", "mufite", "afite"],
+            "-fite takes the plain subject prefixes: ba- they, du- we, mu- you "
+            "(pl.), a- he/she.",
+        ),
+        q(
+            "grammar",
+            "“She is a teacher” — identification uses…",
+            "Ni umwarimu.",
+            ["Ari umwarimu.", "Aba umwarimu.", "Afite umwarimu."],
+            "Bare ni identifies with no subject prefix; -ri is for location and "
+            "kuba for living/being habitually.",
+            item="Ni umwarimu.",
+        ),
+        q(
+            "grammar",
+            "“I work at the market” — with a complement after the verb:",
+            "Nkora ku isoko.",
+            ["Ndakora ku isoko.", "Kora ku isoko.", "Nakora ku isoko."],
+            "The present -ra- drops when something follows the verb: Ndakora alone, "
+            "but Nkora ku isoko.",
+            item="Ndakora.",
+        ),
+        q(
+            "usage",
+            "To ask an adult how many children they have:",
+            "Ufite abana bangahe?",
+            ["Mfite abana bangahe?", "Ufite abana angahe?", "Ufite bana bangahe?"],
+            "u- addresses “you”, and -ngahe agrees with aba-: bangahe — mfite would "
+            "ask about yourself.",
+            item="Ufite abana bangahe?",
+        ),
+        q(
+            "culture",
+            "Asking an adult “Ufite imyaka ingahe?” (how old are you?) is…",
+            "Normal — age is worn proudly and earns respect.",
+            [
+                "Taboo outside the family.",
+                "Acceptable only from elders.",
+                "An insult unless clearly joking.",
+            ],
+            "Years earn the plural forms of respect, so age is asked and told "
+            "openly between adults.",
+        ),
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -379,6 +883,60 @@ Counting out loud (no noun attached):
         item("Abantu icumi baraza.", "Ten people are coming.", ["numbers"]),
         item("Gatanu na gatanu ni icumi.", "Five and five is ten.", ["numbers"]),
     ],
+    "quiz": [
+        q(
+            "vocab",
+            "“Seven”, counting aloud, is…",
+            "karindwi",
+            ["gatandatu", "umunani", "icyenda"],
+            "Karindwi is seven; gatandatu six, umunani eight, icyenda nine.",
+        ),
+        q(
+            "grammar",
+            "“Two books” is…",
+            "ibitabo bibiri",
+            ["ibitabo kabiri", "ibitabo babiri", "ibitabo ebyiri"],
+            "Attached to a noun, 1–7 take its class prefix: ibi- gives bibiri; "
+            "kabiri is only for counting aloud.",
+            item="Ibitabo bine biri ku meza.",
+        ),
+        q(
+            "grammar",
+            "Which numbers never change form, whatever the noun?",
+            "umunani, icyenda, icumi (8, 9, 10)",
+            [
+                "rimwe, kabiri, gatatu (1, 2, 3)",
+                "everything from 1 to 7",
+                "all numbers agree with the noun",
+            ],
+            "Only 1–7 take class prefixes; umunani, icyenda and icumi stay fixed.",
+        ),
+        q(
+            "grammar",
+            "“How many houses?” is…",
+            "inzu zingahe?",
+            ["inzu bangahe?", "inzu cyangahe?", "inzu ingahe?"],
+            "-ngahe agrees like a number: class 10 takes zi- (zingahe); bangahe "
+            "belongs to people (aba-).",
+        ),
+        q(
+            "usage",
+            "A friend asks how many children you have; you have three:",
+            "Mfite abana batatu.",
+            ["Mfite abana gatatu.", "Mfite batatu abana.", "Mfite abana bane."],
+            "The number follows the noun and agrees with aba-: batatu — bane would "
+            "be four.",
+            item="Mfite abana batatu.",
+        ),
+        q(
+            "culture",
+            "Counting on fingers in Rwanda typically starts from…",
+            "the index finger",
+            ["the thumb", "the little finger", "the left palm"],
+            "Fingers count from the index finger, and market totals are often "
+            "tapped out on the palm — numbers live in the hands.",
+        ),
+    ],
 }
 
 A1_U3_L2 = {
@@ -413,6 +971,64 @@ Your age uses -fite + *imyaka*: *Mfite imyaka mirongo itatu* — “I'm thirty.�
         item("Mirongo itanu", "fifty", ["numbers"]),
         item("Ijana", "one hundred", ["numbers"]),
         item("Mfite imyaka mirongo itatu.", "I am thirty years old.", ["numbers"]),
+    ],
+    "quiz": [
+        q(
+            "vocab",
+            "“Twenty” is…",
+            "makumyabiri",
+            ["mirongo ibiri", "icumi na kabiri", "magana abiri"],
+            "Twenty keeps its own old word makumyabiri; the mirongo tens start at "
+            "30, and magana abiri is 200.",
+            item="Makumyabiri",
+        ),
+        q(
+            "grammar",
+            "“Thirty” is built as “three tens”:",
+            "mirongo itatu",
+            ["mirongo gatatu", "makumyatatu", "ijana itatu"],
+            "From 30 upward, tens are mirongo plus an agreeing number — itatu, not "
+            "the counting form gatatu.",
+            item="Mirongo itanu",
+        ),
+        q(
+            "vocab",
+            "“Icumi na rimwe” is…",
+            "eleven",
+            ["ten", "twelve", "twenty-one"],
+            "Numbers assemble with na (“and”): ten and one — eleven.",
+            item="Icumi na rimwe",
+        ),
+        q(
+            "usage",
+            "“I am thirty years old”:",
+            "Mfite imyaka mirongo itatu.",
+            [
+                "Ndi imyaka mirongo itatu.",
+                "Mfite imyaka gatatu.",
+                "Mfite mirongo itatu imyaka.",
+            ],
+            "Age uses -fite + imyaka, with the number after the noun — imyaka "
+            "gatatu would make you three.",
+            item="Mfite imyaka mirongo itatu.",
+        ),
+        q(
+            "vocab",
+            "“One hundred” is…",
+            "ijana",
+            ["igihumbi", "mirongo icyenda", "magana"],
+            "Ijana is 100; igihumbi is 1 000, mirongo icyenda 90, and magana the "
+            "plural “hundreds”.",
+            item="Ijana",
+        ),
+        q(
+            "culture",
+            "A vendor calls out “magana atanu!” — she means…",
+            "500 francs",
+            ["50 francs", "5 000 francs", "five items"],
+            "Prices come fast in round hundreds: magana atanu = five hundreds — "
+            "catching tens and hundreds by ear is market survival.",
+        ),
     ],
 }
 
@@ -449,6 +1065,68 @@ you hear and you have Western time.""",
         item("Ni saa cyenda.", "It is three in the afternoon.", ["numbers"]),
         item("Tuzahura nimugoroba.", "We will meet in the evening.", ["numbers"]),
         item("Mbyuka kare mu gitondo.", "I wake up early in the morning.", ["numbers"]),
+    ],
+    "quiz": [
+        q(
+            "vocab",
+            "On the East African clock, “saa moya” is…",
+            "7:00",
+            ["1:00", "6:00", "12:00"],
+            "The day starts at sunrise (6:00), so “hour one” lands at 7:00 — count "
+            "six hours forward from the number you hear.",
+            item="Ni saa moya za mu gitondo.",
+        ),
+        q(
+            "usage",
+            "A friend says to meet at “saa mbiri za mu gitondo”. You arrive at…",
+            "8:00 in the morning",
+            [
+                "2:00 in the morning",
+                "7:00 in the morning",
+                "2:00 in the afternoon",
+            ],
+            "Saa mbiri is “hour two” = 8:00, and za mu gitondo pins it to the "
+            "morning.",
+        ),
+        q(
+            "vocab",
+            "“Noon” is…",
+            "saa sita",
+            ["saa moya", "saa kumi n'ebyiri", "saa cyenda"],
+            "Saa sita — “hour six” — is noon; saa kumi n'ebyiri (hour twelve) is "
+            "18:00 and saa cyenda 15:00.",
+            item="Ni saa sita.",
+        ),
+        q(
+            "vocab",
+            "To ask the time you say…",
+            "Ni saa ngahe?",
+            ["Ni angahe?", "Ni ryari?", "Ni he?"],
+            "Saa ngahe asks the hour; angahe alone asks a price, ryari “when” and "
+            "he “where”.",
+            item="Ni saa ngahe?",
+        ),
+        q(
+            "usage",
+            "“za nimugoroba” pins an hour to…",
+            "the evening",
+            ["the morning", "midday", "deep night"],
+            "Disambiguate hours with the part of day: mu gitondo morning, ku manywa "
+            "daytime, nimugoroba evening, mu ijoro night.",
+            item="Tuzahura nimugoroba.",
+        ),
+        q(
+            "culture",
+            "Why does saa moya mean 7:00 in Rwanda?",
+            "Hours are counted from sunrise at 6:00, when the day's life starts.",
+            [
+                "Hours are counted from midnight.",
+                "Hours are counted from noon.",
+                "It follows a French colonial convention.",
+            ],
+            "“Saa moya = 7:00” trips up every visitor once — if a friend says saa "
+            "mbiri, they mean 8:00.",
+        ),
     ],
 }
 
@@ -487,6 +1165,63 @@ Days are ordinals built on **ku wa** (“on the …th”):
         item("Ku cyumweru turuhuka.", "On Sunday we rest.", ["numbers"]),
         item("Icyumweru gifite iminsi irindwi.", "A week has seven days.", ["numbers"]),
         item("Tuzahura ku wa gatanu.", "We will meet on Friday.", ["numbers"]),
+    ],
+    "quiz": [
+        q(
+            "vocab",
+            "“Monday” is…",
+            "ku wa mbere",
+            ["ku cyumweru", "ku wa kabiri", "ku wa gatanu"],
+            "Days are ordinals on ku wa: Monday is “the first” — ku wa kabiri is "
+            "Tuesday and ku wa gatanu Friday.",
+            item="Uyu munsi ni ku wa kabiri.",
+        ),
+        q(
+            "grammar",
+            "Ejo means both yesterday and tomorrow. “Yesterday” specifically is…",
+            "ejo hashize",
+            ["ejo hazaza", "uyu munsi", "buri munsi"],
+            "Hashize (“that passed”) points ejo backwards; hazaza (“that comes”) "
+            "points it forward.",
+            item="Ejo hashize nagiye ku ishuri.",
+        ),
+        q(
+            "grammar",
+            "Which pairing of ejo and tense is correct?",
+            "Ejo hazaza nzajya — tomorrow I will go",
+            [
+                "Ejo hazaza nagiye — tomorrow I went",
+                "Ejo hashize nzajya — yesterday I will go",
+                "Ejo hashize tuzajya — yesterday we will go",
+            ],
+            "Ejo hazaza pairs with the future -za-; ejo hashize pairs with the "
+            "past -a- … -ye forms.",
+            item="Ejo hazaza tuzajya ku isoko.",
+        ),
+        q(
+            "vocab",
+            "“Sunday” is…",
+            "ku cyumweru",
+            ["ku wa gatandatu", "ku wa karindwi", "ku wa mbere"],
+            "Sunday is “the week day” — ku cyumweru; there is no ku wa karindwi, "
+            "and ku wa gatandatu is Saturday.",
+            item="Ku cyumweru turuhuka.",
+        ),
+        q(
+            "usage",
+            "It is Thursday and a friend proposes meeting “ejo hazaza”. That means…",
+            "Friday",
+            ["Wednesday", "Thursday next week", "Sunday"],
+            "Ejo hazaza is the ejo that comes — the very next day.",
+        ),
+        q(
+            "culture",
+            "On the last Saturday morning of each month, streets are quiet because of…",
+            "Umuganda — nationwide community work",
+            ["a national lie-in", "the biggest market day", "a driving ban for taxis"],
+            "Umuganda pauses the country until noon — and joining your neighbours "
+            "is the fastest way to belong on your street.",
+        ),
     ],
 }
 
@@ -531,6 +1266,64 @@ the market?” (**kugera** = to reach).""",
         item("Ingofero iri he?", "Where is the helmet?", ["transport"], {5: "R"}),
         item("Ngwino, tugende.", "Come, let's go.", ["transport"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "“Let's get going” uses the subjunctive final -e:",
+            "Tugende.",
+            ["Tugenda.", "Genda.", "Tuzagenda."],
+            "For suggestions the final -a becomes -e: tu-gend-e; Genda! is a direct "
+            "command and tuzagenda is the future “we will go”.",
+            item="Ngwino, tugende.",
+        ),
+        q(
+            "grammar",
+            "A direct instruction to the driver — “Stop here”:",
+            "Hagarara hano.",
+            ["Hagarare hano.", "Uhagarara hano.", "Guhagarara hano."],
+            "The imperative is the bare stem: Hagarara — no subject prefix, no "
+            "infinitive gu-.",
+            item="Hagarara hano.",
+        ),
+        q(
+            "usage",
+            "Before the helmet goes on, you ask…",
+            "Ni angahe kugera ku isoko?",
+            ["Ni saa ngahe?", "Amakuru yawe?", "Uva he?"],
+            "Agree the fare first: “how much to reach the market?” — kugera means "
+            "“to reach”.",
+            item="Ni angahe kugera ku isoko?",
+        ),
+        q(
+            "vocab",
+            "“Slowly”, as in “go slowly”, is…",
+            "buhoro",
+            ["vuba", "cyane", "kare"],
+            "Genda buhoro — go slowly; vuba is fast, cyane very, kare early.",
+            item="Genda buhoro.",
+        ),
+        q(
+            "grammar",
+            "“To Kimironko” — neighbourhood and place names take…",
+            "i Kimironko",
+            ["mu Kimironko", "ku Kimironko", "za Kimironko"],
+            "Place names take the locative i (i Kimironko, i Kigali); mu is for "
+            "countries and enclosed spaces.",
+            item="Ndashaka kujya i Kimironko.",
+        ),
+        q(
+            "culture",
+            "The right moment to agree the moto fare is…",
+            "before the ride begins",
+            [
+                "at the destination",
+                "halfway, at a red light",
+                "only if the driver raises it",
+            ],
+            "Negotiating at the destination is bad form on both sides — and a "
+            "driver without a passenger helmet is not your driver.",
+        ),
+    ],
 }
 
 A2_U1_L2 = {
@@ -568,6 +1361,64 @@ lost”, from *kuzimira*) plus *Wamfasha?* will get you anywhere in Rwanda.""",
         item("Banki iri iruhande rw'ivuriro.", "The bank is next to the clinic.", ["transport"]),
         item("Ndazimiye. Wamfasha?", "I'm lost. Could you help me?", ["transport"]),
     ],
+    "quiz": [
+        q(
+            "vocab",
+            "“Turn right” is…",
+            "Kata iburyo.",
+            ["Kata ibumoso.", "Komeza imbere.", "Hagarara hano."],
+            "Gukata is to turn: iburyo right, ibumoso left; komeza imbere keeps "
+            "you going straight.",
+            item="Kata iburyo.",
+        ),
+        q(
+            "vocab",
+            "“Komeza imbere” means…",
+            "Keep going straight.",
+            ["Turn back.", "Stop ahead.", "Wait behind."],
+            "Komeza = continue, imbere = ahead/in front — the straight-on "
+            "instruction.",
+            item="Komeza imbere.",
+        ),
+        q(
+            "grammar",
+            "“Could you help me?” — the polite conditional is…",
+            "Wamfasha?",
+            ["Mfasha!", "Uramfasha?", "Kumfasha?"],
+            "The wa- conditional softens a request; bare Mfasha! is a blunt "
+            "command.",
+            item="Ndazimiye. Wamfasha?",
+        ),
+        q(
+            "vocab",
+            "“Over there, visible far off” is…",
+            "hariya",
+            ["hano", "aho", "hafi"],
+            "Distance comes in three steps: hano here, aho there (known), hariya "
+            "over there in sight.",
+        ),
+        q(
+            "usage",
+            "You are lost in a new neighbourhood. You say…",
+            "Ndazimiye. Wamfasha?",
+            ["Ndahaze, urakoze.", "Ni angahe?", "Nitwa Ange."],
+            "Ndazimiye (“I'm lost”) plus the soft Wamfasha? will get you anywhere "
+            "in Rwanda.",
+            item="Ndazimiye. Wamfasha?",
+        ),
+        q(
+            "culture",
+            "Instead of explaining the route, a stranger walks you part of the way. This is…",
+            "normal hospitality — accept it",
+            [
+                "a request for payment",
+                "unusual — politely refuse",
+                "a sign you offended them",
+            ],
+            "Walking you along is ordinary kindness; remember too that pointing at "
+            "a person with one finger is rude — use the whole hand.",
+        ),
+    ],
 }
 
 A2_U1_L3 = {
@@ -603,6 +1454,68 @@ Useful bus verbs: **gutegereza** (wait for), **kumanuka** (get off/descend),
         item("Itike ni amafaranga magana abiri.", "The ticket is two hundred francs.", ["transport"]),
         item("Ndifuza kumanuka hano.", "I'd like to get off here.", ["transport"]),
         item("Umujyi uri kure y'urugo rwanjye.", "Town is far from my home.", ["transport"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "Class 5 isoko/ishuri agree with ri-. “The school is near” is…",
+            "Ishuri riri hafi.",
+            ["Ishuri iri hafi.", "Ishuri ziri hafi.", "Ishuri biri hafi."],
+            "Class 5 (i-/ri-) takes ri-: ishuri riri hafi — class 9 words like "
+            "banki and bisi take i- instead.",
+        ),
+        q(
+            "grammar",
+            "“I go to school every day” — a habit, so…",
+            "Njya ku ishuri buri munsi.",
+            [
+                "Ndajya ku ishuri buri munsi.",
+                "Njye ku ishuri buri munsi.",
+                "Nzajya ku ishuri ejo.",
+            ],
+            "Habitual actions drop -ra-: njya, with buri munsi (“every day”) — "
+            "ndajya would be “I am going (now)”.",
+            item="Njya ku ishuri buri munsi.",
+        ),
+        q(
+            "vocab",
+            "“To wait for” is…",
+            "gutegereza",
+            ["kumanuka", "kugera", "gutura"],
+            "Gutegereza is to wait for (Tegereza bisi hano); kumanuka is to get "
+            "off, kugera to reach, gutura to live somewhere.",
+            item="Tegereza bisi hano.",
+        ),
+        q(
+            "usage",
+            "You want to get off the bus politely:",
+            "Ndifuza kumanuka hano.",
+            ["Hagarara!", "Genda buhoro.", "Ndashaka itike."],
+            "Kwifuza is the polite “would like”: ndifuza kumanuka hano — “I'd like "
+            "to get off here”.",
+            item="Ndifuza kumanuka hano.",
+        ),
+        q(
+            "vocab",
+            "“Itike ni amafaranga magana abiri.” — the ticket costs…",
+            "200 francs",
+            ["2 000 francs", "20 francs", "100 francs"],
+            "Magana abiri is “hundreds that are two” — 200; igihumbi would be a "
+            "thousand.",
+            item="Itike ni amafaranga magana abiri.",
+        ),
+        q(
+            "culture",
+            "Kigali buses leave…",
+            "when the seats are full",
+            [
+                "on a strict published timetable",
+                "every hour on the hour",
+                "only when police wave them off",
+            ],
+            "Buses fill seat by seat and go when full — the conductor calls the "
+            "destination out the window; answer with a hand signal.",
+        ),
     ],
 }
 
@@ -645,6 +1558,65 @@ back?”""",
         item("Azaza nimugoroba.", "She will come in the evening.", ["transport", "grammar"]),
         item("Buhoro buhoro ni rwo rugendo.", "Slowly, slowly is indeed the journey. (proverb)", ["transport", "proverb"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "“She will come in the evening” — the future -za-:",
+            "Azaza nimugoroba.",
+            ["Araza nimugoroba.", "Yaje nimugoroba.", "Azaje nimugoroba."],
+            "-za- slots between the subject prefix and stem: a-za-za; araza is "
+            "present and yaje is the past “she came”.",
+            item="Azaza nimugoroba.",
+        ),
+        q(
+            "grammar",
+            "The past of kujya (“to go”) for “I went” is…",
+            "nagiye",
+            ["nzajya", "ndajya", "najyaga"],
+            "The recent past is -a- plus a changed ending: n-a-gi-ye; nzajya is “I "
+            "will go” and ndajya “I am going”.",
+            item="Nagiye ku isoko ejo hashize.",
+        ),
+        q(
+            "grammar",
+            "“We came early” is…",
+            "Twaje kare.",
+            ["Tuzaza kare.", "Turaza kare.", "Twaza kare."],
+            "Kuza in the past: tw-a-je — the -ye/-je ending marks the past, while "
+            "tuzaza is future and turaza present.",
+            item="Twaje kare.",
+        ),
+        q(
+            "vocab",
+            "“When?” is…",
+            "ryari",
+            ["he", "nde", "iki"],
+            "Ryari asks when (Uzagaruka ryari?); he asks where, nde who, iki what.",
+            item="Uzagaruka ryari?",
+        ),
+        q(
+            "usage",
+            "“Uzagaruka ryari?” asks…",
+            "When will you come back?",
+            [
+                "Where are you going?",
+                "When did you come back?",
+                "Will you come back soon?",
+            ],
+            "U-za-garuka is the future “you will return”, so ryari asks for the "
+            "future time, not the past.",
+            item="Uzagaruka ryari?",
+        ),
+        q(
+            "culture",
+            "Someone apologises for their slow progress. The proverb to offer is…",
+            "Buhoro buhoro ni rwo rugendo.",
+            ["Genda buhoro.", "Umuntu ni abantu.", "Murakaza neza!"],
+            "“Slowly, slowly is the journey” — Rwanda's favourite word on progress: "
+            "steady beats fast, in travel as in learning.",
+            item="Buhoro buhoro ni rwo rugendo.",
+        ),
+    ],
 }
 
 # ---------------------------------------------------------------------------
@@ -686,6 +1658,69 @@ of tomatoes?” — note the class-5 connector **ry'** before a vowel.""",
         item("Ni bihendutse.", "It's cheap.", ["market"]),
         item("Mfite amafaranga igihumbi.", "I have one thousand francs.", ["market"]),
     ],
+    "quiz": [
+        q(
+            "vocab",
+            "You point at something on the stall and ask “how much is THIS?”:",
+            "Iki ni angahe?",
+            ["Iki ni iki?", "Ni saa ngahe?", "Iki ni nde?"],
+            "Iki is “this thing” (class 7) and ni angahe asks the price; iki ni iki "
+            "would ask what it is.",
+            item="Iki ni angahe?",
+        ),
+        q(
+            "grammar",
+            "“How much is a kilo of tomatoes?” — the class-5 connector:",
+            "Ikilo ry'inyanya ni angahe?",
+            [
+                "Ikilo cy'inyanya ni angahe?",
+                "Ikilo by'inyanya ni angahe?",
+                "Ikilo z'inyanya ni angahe?",
+            ],
+            "Ikilo is class 5, so its connector is rya-, contracting to ry' before "
+            "the vowel of inyanya.",
+            item="Ikilo ry'inyanya ni angahe?",
+        ),
+        q(
+            "vocab",
+            "“Birahenze!” means…",
+            "That's expensive!",
+            ["It's cheap.", "It's delicious.", "That's enough."],
+            "From guhenda: birahenze — expensive; the happy opposite is ni "
+            "bihendutse, “it's cheap”.",
+            item="Birahenze!",
+        ),
+        q(
+            "vocab",
+            "500 francs is “amafaranga…”",
+            "magana atanu",
+            ["magana abiri", "igihumbi", "mirongo itanu"],
+            "Magana atanu is five hundreds; magana abiri is 200, igihumbi 1 000 "
+            "and mirongo itanu just 50.",
+            item="Ni amafaranga magana atanu.",
+        ),
+        q(
+            "usage",
+            "The vendor's price is too high. You react:",
+            "Birahenze cyane!",
+            ["Ni bihendutse.", "Ni byiza cyane.", "Ndabyemeye."],
+            "Birahenze cyane (“much too expensive”) opens the bargain; ndabyemeye "
+            "would accept the price as-is.",
+            item="Birahenze!",
+        ),
+        q(
+            "culture",
+            "Before asking a price at the market, you should…",
+            "greet the vendor first",
+            [
+                "name your maximum straight away",
+                "inspect the goods in silence",
+                "ask another customer what they paid",
+            ],
+            "Never open with the price: a price asked without a greeting starts "
+            "high and stays high.",
+        ),
+    ],
 }
 
 A2_U2_L2 = {
@@ -720,6 +1755,74 @@ back.” That promise is worth more than the last hundred francs.""",
         item("Ongeraho gato.", "Add a little more.", ["market"]),
         item("Ni sawa, ndabyemeye.", "Okay, I accept.", ["market"]),
         item("Urakoze, nzagaruka.", "Thank you, I will come back.", ["market"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“Mpa” (“give me”) is built from…",
+            "m- (me) + ha (give) — the object sits inside the verb",
+            [
+                "a shortening of the noun impano",
+                "mu- (you pl.) + ha (give)",
+                "the imperative of gufata",
+            ],
+            "Kinyarwanda slots object pronouns into the verb: m-pa = give-me, just "
+            "as -du- (“us”) hides in mwaduha.",
+            item="Mpa igiciro cyiza.",
+        ),
+        q(
+            "vocab",
+            "“Gabanya gato” means…",
+            "Lower it a little.",
+            ["Add a little.", "Wrap it up.", "Weigh it again."],
+            "Kugabanya is to reduce — the buyer's opening move; gato softens it to "
+            "“a little”.",
+            item="Gabanya gato.",
+        ),
+        q(
+            "vocab",
+            "The vendor's counter-move “Ongeraho gato” means…",
+            "Add a little more.",
+            ["Take a little off.", "Come back tomorrow.", "Choose another one."],
+            "Kongeraho is to add on — the vendor asks you to come up as you ask "
+            "her to come down.",
+            item="Ongeraho gato.",
+        ),
+        q(
+            "grammar",
+            "“Shall I give you four hundred?” — the subjunctive offer:",
+            "Nguhe magana ane?",
+            [
+                "Mpa magana ane?",
+                "Uzampa magana ane?",
+                "Ndaguha magana ane.",
+            ],
+            "The -e subjunctive makes an offer: n-gu-he “shall I give you”; Mpa "
+            "asks THEM to give, and ndaguha just states it.",
+            item="Nguhe magana ane?",
+        ),
+        q(
+            "usage",
+            "You have agreed on a price. You close warmly with…",
+            "Ni sawa, ndabyemeye.",
+            ["Birahenze cyane.", "Ntacyo nshaka.", "Gabanyaho."],
+            "Ni sawa (a Swahili loan every Rwandan uses) plus ndabyemeye — “okay, I "
+            "accept” — seals the deal in good spirit.",
+            item="Ni sawa, ndabyemeye.",
+        ),
+        q(
+            "culture",
+            "Once a market price is agreed, re-opening the bargain is…",
+            "bad form — pay, and promise return custom instead",
+            [
+                "expected exactly once more",
+                "fine as long as you smile",
+                "required for large amounts",
+            ],
+            "Bargaining is conversation, not combat — and “Nzagaruka” (I'll be "
+            "back) is worth more than the last hundred francs.",
+            item="Urakoze, nzagaruka.",
+        ),
     ],
 }
 
@@ -758,6 +1861,73 @@ Ordering combines what you know:
         item("Ongeramo inyanya eshatu.", "Add in three tomatoes.", ["market"]),
         item("Ni byose, urakoze.", "That's all, thank you.", ["market"]),
     ],
+    "quiz": [
+        q(
+            "vocab",
+            "“Tomatoes” are…",
+            "inyanya",
+            ["ibirayi", "amashu", "ibitoki"],
+            "Inyanya are tomatoes; ibirayi potatoes, amashu cabbage, ibitoki "
+            "plantains.",
+            item="Inyanya ziri he?",
+        ),
+        q(
+            "grammar",
+            "“Where are the tomatoes?” — class 10 takes zi-:",
+            "Inyanya ziri he?",
+            ["Inyanya biri he?", "Inyanya riri he?", "Inyanya bari he?"],
+            "Plural inyanya is class 10, whose subject prefix is zi-: inyanya "
+            "zi-ri he.",
+            item="Inyanya ziri he?",
+        ),
+        q(
+            "grammar",
+            "“Give me two kilos of potatoes”:",
+            "Mpa ibiro bibiri by'ibirayi.",
+            [
+                "Mpa ibiro kabiri by'ibirayi.",
+                "Mpa ibiro bibiri cy'ibirayi.",
+                "Mpa biro bibiri by'ibirayi.",
+            ],
+            "Ibiro (class 8) takes bibiri and the connector by' — kabiri is only "
+            "for counting aloud.",
+            item="Mpa ibiro bibiri by'ibirayi.",
+        ),
+        q(
+            "vocab",
+            "“Ibitoki birahenze uyu munsi.” means…",
+            "Plantains are expensive today.",
+            [
+                "Plantains are cheap today.",
+                "Potatoes are expensive today.",
+                "Plantains are fresh today.",
+            ],
+            "Ibitoki (plantains, class 8) takes bi-: birahenze — “are expensive” — "
+            "with uyu munsi, “today”.",
+            item="Ibitoki birahenze uyu munsi.",
+        ),
+        q(
+            "usage",
+            "You have everything you need and want to finish up:",
+            "Ni byose, urakoze.",
+            ["Ongeramo inyanya eshatu.", "Mpa igiciro cyiza.", "Ndashaka imboga."],
+            "Ni byose — “that's everything” (byose agreeing with class 8) — closes "
+            "the purchase; the others keep it going.",
+            item="Ni byose, urakoze.",
+        ),
+        q(
+            "culture",
+            "The vendor drops an extra tomato in your bag after you pay. That is…",
+            "inyongera — the little bonus for a pleasant customer",
+            [
+                "a mistake you should point out",
+                "an invitation to bargain again",
+                "a sample you pay for next time",
+            ],
+            "Inyongera rewards a friendly sale — say urakoze; and do squeeze the "
+            "tomatoes first, vendors expect you to inspect.",
+        ),
+    ],
 }
 
 A2_U2_L4 = {
@@ -795,6 +1965,67 @@ money” — a bargaining sentence worth its weight in francs.""",
         item("Nta mafaranga mfite.", "I have no money.", ["market", "grammar"]),
         item("Mfite amafaranga make.", "I have little money.", ["market"]),
         item("Amafaranga y'u Rwanda", "Rwandan francs", ["market"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“2 000” is…",
+            "ibihumbi bibiri",
+            ["igihumbi bibiri", "ibihumbi kabiri", "magana abiri"],
+            "Igihumbi (class 7) pluralises to ibihumbi (class 8), and the number "
+            "agrees: bibiri — noun classes reach into arithmetic.",
+            item="Ibihumbi bibiri na magana atanu",
+        ),
+        q(
+            "vocab",
+            "“Ibihumbi bibiri na magana atanu” is…",
+            "2 500 francs",
+            ["2 050 francs", "250 francs", "5 200 francs"],
+            "Two thousands and five hundreds, joined by na: 2 500.",
+            item="Ibihumbi bibiri na magana atanu",
+        ),
+        q(
+            "grammar",
+            "“I have no money” — nta swallows the initial vowel:",
+            "Nta mafaranga mfite.",
+            [
+                "Nta amafaranga mfite.",
+                "Nta mafaranga ndafite.",
+                "Ntabwo amafaranga mfite.",
+            ],
+            "Nta + noun drops the noun's initial vowel (nta mafaranga) and the "
+            "verb follows without -ra-.",
+            item="Nta mafaranga mfite.",
+        ),
+        q(
+            "vocab",
+            "“Magana atanu” is…",
+            "five hundred",
+            ["fifty", "five thousand", "four hundred"],
+            "Magana are hundreds: atanu makes five of them — 500.",
+            item="Magana atanu",
+        ),
+        q(
+            "grammar",
+            "“A little money” — “little” agreeing with class 6 ama-:",
+            "amafaranga make",
+            ["amafaranga gake", "amafaranga bake", "amafaranga hake"],
+            "Class 6 takes ma-: make — a bargaining sentence worth its weight in "
+            "francs (Mfite amafaranga make).",
+            item="Mfite amafaranga make.",
+        ),
+        q(
+            "culture",
+            "Mobile money (momo) in Rwanda is…",
+            "everywhere — even tiny stalls take it",
+            [
+                "accepted only in banks",
+                "banned inside markets",
+                "used only by foreigners",
+            ],
+            "The agent's yellow booth is a village landmark — though the market "
+            "itself still runs on well-worn hundred-franc coins.",
+        ),
     ],
 }
 
@@ -838,6 +2069,66 @@ the morning?”""",
         item("Ibiryo biraryoshye.", "The food is delicious.", ["food"]),
         item("Urya iki mu gitondo?", "What do you eat in the morning?", ["food"], {4: "R"}),
     ],
+    "quiz": [
+        q(
+            "vocab",
+            "The national staple, beans, is…",
+            "ibishyimbo",
+            ["ibirayi", "umuceri", "isombe"],
+            "Ibishyimbo appear at nearly every meal; ibirayi are potatoes, umuceri "
+            "rice and isombe pounded cassava leaves.",
+            item="Ibishyimbo n'umuceri ni ibiryo byiza.",
+        ),
+        q(
+            "grammar",
+            "“Amazi yo kunywa” means…",
+            "water for drinking",
+            ["milk for drinking", "water for washing", "cold water"],
+            "The -o ku- construction marks purpose: amazi yo kunywa — water "
+            "that is for drinking.",
+            item="Ndashaka amazi yo kunywa.",
+        ),
+        q(
+            "grammar",
+            "“The food is delicious” — class 8 agreement:",
+            "Ibiryo biraryoshye.",
+            ["Ibiryo riraryoshye.", "Ibiryo araryoshye.", "Ibiryo ziraryoshye."],
+            "Ibiryo (class 8) takes bi-: bi-ra-ryoshye, from kuryoha, “to be "
+            "tasty”.",
+            item="Ibiryo biraryoshye.",
+        ),
+        q(
+            "grammar",
+            "“Ubugari with isombe” — na contracts before a vowel:",
+            "ubugari n'isombe",
+            ["ubugari na isombe", "ubugari ni isombe", "ubugari no isombe"],
+            "Na (“and/with”) becomes n' before a vowel: n'isombe — ni would say "
+            "“is”, and no is the contraction before infinitives.",
+            item="Ndya ubugari n'isombe.",
+        ),
+        q(
+            "usage",
+            "To ask what someone eats in the morning:",
+            "Urya iki mu gitondo?",
+            ["Urya nde mu gitondo?", "Unywa he mu gitondo?", "Urya ryari?"],
+            "Iki asks “what”; nde would ask WHO you eat — a mix-up worth avoiding "
+            "at breakfast.",
+            item="Urya iki mu gitondo?",
+        ),
+        q(
+            "culture",
+            "Offering a guest milk in Rwanda is…",
+            "an honour rooted in the country's cattle heritage",
+            [
+                "an everyday afterthought",
+                "reserved for children",
+                "a hint that the visit is over",
+            ],
+            "Milk carries deep prestige — the milk bar (akabari k'amata) is a "
+            "Kigali institution.",
+            item="Amata ni meza ku bana.",
+        ),
+    ],
 }
 
 A2_U3_L2 = {
@@ -877,6 +2168,72 @@ every day”; times slot in directly: *Turya saa sita* — “we eat at noon.”
         item("Mfite inzara.", "I am hungry.", ["food"]),
         item("Mfite inyota.", "I am thirsty.", ["food"]),
     ],
+    "quiz": [
+        q(
+            "grammar",
+            "“I am eating” — the verb ends the sentence, so…",
+            "Ndarya.",
+            ["Ndya.", "Ndarye.", "Kurya."],
+            "Verb-final present takes -ra-: nda-rya “I am eating”; plain ndya is "
+            "the habitual/linked form.",
+        ),
+        q(
+            "grammar",
+            "“He eats rice every day” — a habit drops -ra-:",
+            "Arya umuceri buri munsi.",
+            [
+                "Ararya umuceri buri munsi.",
+                "Arye umuceri buri munsi.",
+                "Azarya umuceri buri munsi.",
+            ],
+            "Habits take the plain form with buri munsi: arya — ararya is “he is "
+            "eating right now” and azarya the future.",
+            item="Arya umuceri buri munsi.",
+        ),
+        q(
+            "vocab",
+            "“I am thirsty” is…",
+            "Mfite inyota.",
+            ["Mfite inzara.", "Mfite inyoni.", "Mfite amazi."],
+            "Thirst is possessed: mfite inyota; mfite inzara is “I'm hungry” and "
+            "inyoni is a bird.",
+            item="Mfite inyota.",
+        ),
+        q(
+            "usage",
+            "Your host asks “Urashaka kunywa iki?”. They want to know…",
+            "what you would like to drink",
+            [
+                "whether you are hungry",
+                "what you would like to eat",
+                "when you will drink",
+            ],
+            "Kunywa is to drink and iki asks what — kurya would make it about "
+            "food.",
+            item="Urashaka kunywa iki?",
+        ),
+        q(
+            "grammar",
+            "“I want to eat” — want + infinitive:",
+            "Ndashaka kurya.",
+            ["Ndashaka ndya.", "Ndashaka rya.", "Ndashaka kurye."],
+            "After ndashaka comes the full ku- infinitive: kurya — not a "
+            "conjugated or subjunctive form.",
+            item="Ndashaka kurya.",
+        ),
+        q(
+            "culture",
+            "You arrive at a Rwandan home during a meal. Expect…",
+            "a plate — meals are shared",
+            [
+                "to wait outside until it ends",
+                "to be asked to come back later",
+                "to be served only a drink",
+            ],
+            "Arriving during a meal gets you a plate; wash hands before ubugari — "
+            "it is eaten by hand — and try a little of everything.",
+        ),
+    ],
 }
 
 A2_U3_L3 = {
@@ -908,6 +2265,69 @@ A buffet is a **melange** (from French) — pile the plate once, pay one price."
         item("Ni angahe byose?", "How much is everything?", ["food", "market"], {5: "R"}),
         item("Ndifuza kwishyura.", "I would like to pay.", ["food"]),
         item("Ifunguro ryari ryiza cyane.", "The meal was very good.", ["food"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“Could you (pl.) give us the menu?” — the polite conditional:",
+            "Mwaduha urutonde rw'ibiryo?",
+            [
+                "Muduha urutonde rw'ibiryo.",
+                "Duha urutonde rw'ibiryo.",
+                "Mwaduhe urutonde rw'ibiryo!",
+            ],
+            "Mwa- is “you (pl.) would” and the object -du- (“us”) sits inside the "
+            "verb: mu-a-du-ha.",
+            item="Mwaduha urutonde rw'ibiryo?",
+        ),
+        q(
+            "vocab",
+            "“To pay” is…",
+            "kwishyura",
+            ["kwifuza", "kuzanira", "kugura"],
+            "Kwishyura settles the bill (Ndifuza kwishyura); kwifuza is to wish, "
+            "kuzanira to bring for, kugura to buy.",
+            item="Ndifuza kwishyura.",
+        ),
+        q(
+            "usage",
+            "Stating your order politely:",
+            "Ndifuza inyama n'ibirayi.",
+            ["Mpa inyama!", "Inyama, vuba!", "Ndashaka kwishyura."],
+            "Ndifuza (“I'd like”) is the polite want — a bare Mpa! belongs to the "
+            "market bargain, not the table.",
+            item="Ndifuza inyama n'ibirayi.",
+        ),
+        q(
+            "usage",
+            "Asking for the total at the end of the meal:",
+            "Ni angahe byose?",
+            ["Ni byose, urakoze.", "Ni saa ngahe?", "Mwaduha byose?"],
+            "Byose (“all of it”, class 8) turns the market question into “how much "
+            "is everything?”.",
+            item="Ni angahe byose?",
+        ),
+        q(
+            "grammar",
+            "“Bring us water” — kuzanira (“bring for”) with -us- inside:",
+            "Tuzanire amazi.",
+            ["Tuzanira amazi.", "Zanire amazi.", "Tuzana amazi."],
+            "Tu- (“us”) slots into the verb and the final -e marks the polite "
+            "command: tu-zanir-e.",
+            item="Tuzanire amazi.",
+        ),
+        q(
+            "culture",
+            "A lunchtime “melange” is…",
+            "one plate piled once at the buffet, for one price",
+            [
+                "a mixed fruit drink",
+                "the restaurant's daily soup",
+                "a shared platter for the table",
+            ],
+            "The melange is Rwanda's working meal — one pass, one price, no hurry; "
+            "tipping is appreciated but rounding up is plenty.",
+        ),
     ],
 }
 
@@ -942,6 +2362,69 @@ urakoze* — “I don't want anything, thank you” (**ntacyo** = “no thing”
         item("Ntabwo ndya inyama.", "I don't eat meat.", ["food", "grammar"]),
         item("Nkunda icyayi kuruta ikawa.", "I like tea more than coffee.", ["food"]),
         item("Ntacyo nshaka, urakoze.", "I don't want anything, thank you.", ["food"]),
+    ],
+    "quiz": [
+        q(
+            "grammar",
+            "“I don't like” — the first-person negative si-:",
+            "Sinkunda",
+            ["Ntinkunda", "Sikunda", "Ntikunda"],
+            "First person singular negates with si- and keeps its n-: si-n-kunda; "
+            "nti- belongs to every other person.",
+            item="Sinkunda urusenda.",
+        ),
+        q(
+            "grammar",
+            "“They don't eat” is…",
+            "ntibarya",
+            ["sibarya", "ntibarye", "ntabarya"],
+            "Other persons negate with nti- before the subject prefix: nti-ba-rya; "
+            "-rye would be the subjunctive ending.",
+            item="Ntabwo ndya inyama.",
+        ),
+        q(
+            "vocab",
+            "“Nkunda icyayi kuruta ikawa.” means…",
+            "I like tea more than coffee.",
+            [
+                "I like coffee more than tea.",
+                "I drink tea instead of coffee.",
+                "I like tea and coffee equally.",
+            ],
+            "Kuruta makes the comparison “more than”, ranking what comes before it "
+            "(icyayi) above what follows (ikawa).",
+            item="Nkunda icyayi kuruta ikawa.",
+        ),
+        q(
+            "usage",
+            "To refuse more food without offending your host:",
+            "Urakoze, ndahaze.",
+            ["Ntabwo ndya.", "Sinkunda ibiryo byawe.", "Genda, ndahaze."],
+            "Pair thanks with “I'm full” — urakoze, ndahaze — and no host is "
+            "offended; a flat refusal wounds.",
+            item="Ntacyo nshaka, urakoze.",
+        ),
+        q(
+            "vocab",
+            "“Ntacyo nshaka” means…",
+            "I don't want anything",
+            ["I want everything", "I don't like this one", "I can't find it"],
+            "Ntacyo is “no thing”: ntacyo nshaka — softened with urakoze when "
+            "declining an offer.",
+            item="Ntacyo nshaka, urakoze.",
+        ),
+        q(
+            "culture",
+            "The best-understood way to explain being vegetarian:",
+            "“Simfite umuco wo kurya inyama” — framing it as your custom",
+            [
+                "declaring meat unhealthy",
+                "refusing dishes silently",
+                "accepting meat and leaving it",
+            ],
+            "Framing it as your umuco (custom) is respected by everyone — customs "
+            "are understood where preferences may puzzle.",
+        ),
     ],
 }
 
@@ -1037,3 +2520,23 @@ COURSE_KIN = {
         },
     ],
 }
+
+# ---------------------------------------------------------------------------
+# Quiz index — (cefr, unit ord, lesson ord) -> authored quiz questions.
+# Quizzes are curriculum content that lives here (not in a DB column); the
+# roadmap service joins them to DB lessons by position at serialization time.
+# ---------------------------------------------------------------------------
+
+
+def _quiz_index() -> dict[tuple[str, int, int], list[dict]]:
+    idx: dict[tuple[str, int, int], list[dict]] = {}
+    for level in COURSE_KIN["levels"]:
+        for unit in level["units"]:
+            for lesson_ord, lesson in enumerate(unit["lessons"], start=1):
+                quiz = lesson.get("quiz")
+                if quiz:
+                    idx[(level["cefr"], unit["ord"], lesson_ord)] = quiz
+    return idx
+
+
+KIN_QUIZZES = _quiz_index()
