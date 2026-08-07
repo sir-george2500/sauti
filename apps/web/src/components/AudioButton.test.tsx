@@ -39,4 +39,17 @@ describe("AudioButton", () => {
     expect(urls).toContain("item-2");
     expect(created.filter((u) => u.includes("item-1"))).toHaveLength(1);
   });
+
+  it("plays a direct src (audio_url) instead of the /tts route when provided", () => {
+    render(<AudioButton itemId="item-1" src="https://cdn.example/kin/muraho.mp3" />);
+    fireEvent.click(screen.getByTestId("play-audio"));
+    expect(created).toEqual(["https://cdn.example/kin/muraho.mp3"]);
+  });
+
+  it("falls back to the /tts route when src is null (rollout gap)", () => {
+    render(<AudioButton itemId="item-9" src={null} />);
+    fireEvent.click(screen.getByTestId("play-audio"));
+    expect(created).toHaveLength(1);
+    expect(created[0]).toContain("/tts/item-9");
+  });
 });

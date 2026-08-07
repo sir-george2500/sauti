@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getRoadmap, lessonFromRoadmap } from "@/lib/api/endpoints";
+import { prefetchAudio } from "@/lib/audio-prefetch";
 import { AudioButton } from "@/components/AudioButton";
 import { Mcq } from "@/components/Mcq";
 import { Card, CardLabel, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
@@ -19,10 +20,19 @@ export default function ListeningPage({
   // Shares the ["roadmap"] cache with the sidebar/lesson screens — the
   // listening lines are the lesson's items out of the same payload.
   const roadmapQuery = useQuery({ queryKey: ["roadmap"], queryFn: getRoadmap });
-  const view = roadmapQuery.data ? lessonFromRoadmap(roadmapQuery.data, lessonId) : null;
+  const view = useMemo(
+    () => (roadmapQuery.data ? lessonFromRoadmap(roadmapQuery.data, lessonId) : null),
+    [roadmapQuery.data, lessonId],
+  );
+  const items = useMemo(() => view?.lesson.items ?? [], [view]);
   const [played, setPlayed] = useState(false);
   const [speed, setSpeed] = useState<0 | 1>(1);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+
+  // Warm the lesson's lines so the first play is instant.
+  useEffect(() => {
+    prefetchAudio(items.map((i) => i.audio_url));
+  }, [items]);
 
   if (roadmapQuery.isPending) return <LoadingNote label="Cueing the voices…" />;
   if (roadmapQuery.isError || !view) {
@@ -30,7 +40,6 @@ export default function ListeningPage({
   }
 
   const { lesson } = view;
-  const items = lesson.items ?? [];
 
   return (
     <div className="grid gap-3.5">
@@ -50,6 +59,7 @@ export default function ListeningPage({
             <div key={item.id} className="flex items-center gap-4">
               <AudioButton
                 itemId={item.id}
+                src={item.audio_url}
                 tone="gold"
                 slow={speed === 0}
                 testid="listening-play"

@@ -4,8 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { ttsUrl } from "@/lib/api/client";
 
 /**
- * Play button for a curriculum item's native audio via GET /tts/{item_id}
- * (302 to the audio file — stub silence in MVP, shape final).
+ * Play button for a curriculum item's native audio.
+ *
+ * When the payload carries a direct `src` (Cloudinary audio_url) it plays
+ * that URL as-is — zero API hops, and usually already warm from the
+ * per-lesson prefetch. Without `src` it falls back to GET /tts/{item_id}
+ * (302 to the audio file).
  *
  * Mockup treatment: circular 1.5px-outlined button; idle shows the outline
  * colour glyph on transparent, playing fills the circle. `tone="gold"` is
@@ -13,6 +17,7 @@ import { ttsUrl } from "@/lib/api/client";
  */
 export function AudioButton({
   itemId,
+  src,
   label,
   slow = false,
   testid = "play-audio",
@@ -21,6 +26,8 @@ export function AudioButton({
   className = "",
 }: {
   itemId: string;
+  /** Direct audio URL (item.audio_url) — preferred over the /tts route. */
+  src?: string | null;
   label?: string;
   /** Playback at 0.65x for "listen slowed down". */
   slow?: boolean;
@@ -31,8 +38,9 @@ export function AudioButton({
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const url = src || ttsUrl(itemId);
 
-  // The element is lazily created per item and must be dropped when the item
+  // The element is lazily created per source and must be dropped when it
   // changes: review flows reuse this component instance across cards, and a
   // cached element would keep replaying the first card's audio forever.
   useEffect(() => {
@@ -41,7 +49,7 @@ export function AudioButton({
       audioRef.current = null;
       setPlaying(false);
     };
-  }, [itemId]);
+  }, [url]);
 
   const toggle = () => {
     if (playing) {
@@ -50,7 +58,7 @@ export function AudioButton({
       return;
     }
     if (!audioRef.current) {
-      const audio = new Audio(ttsUrl(itemId));
+      const audio = new Audio(url);
       audio.addEventListener("ended", () => setPlaying(false));
       audio.addEventListener("error", () => setPlaying(false));
       audioRef.current = audio;

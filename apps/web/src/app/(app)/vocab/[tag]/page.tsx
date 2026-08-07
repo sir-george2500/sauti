@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getVocabDeck, postAttempt } from "@/lib/api/endpoints";
+import { prefetchAudio } from "@/lib/audio-prefetch";
 import { reviewAttemptPayload } from "@/lib/srs";
 import { AudioButton } from "@/components/AudioButton";
 import { btnGhost, btnPrimary, Card, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
@@ -34,6 +35,12 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
       void queryClient.invalidateQueries({ queryKey: ["vocab-decks"] });
     },
   });
+
+  // Warm the deck's audio up-front so every card's first tap is instant.
+  const deckItems = deckQuery.data?.items;
+  useEffect(() => {
+    if (deckItems) prefetchAudio(deckItems.map((i) => i.audio_url));
+  }, [deckItems]);
 
   if (deckQuery.isPending) return <LoadingNote label="Shuffling the deck…" />;
   if (deckQuery.isError) return <ErrorNote message="This deck couldn't load." />;
@@ -77,7 +84,7 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
         <Card testid="review-card">
           <div className="flex min-h-[220px] flex-col items-center justify-center gap-4 py-6 text-center">
             <div className="flex items-center gap-3.5">
-              <AudioButton itemId={current.id} />
+              <AudioButton itemId={current.id} src={current.audio_url} />
               <p className="ky text-[26px] leading-snug font-semibold sm:text-[30px]">
                 {current.sentence}
               </p>
