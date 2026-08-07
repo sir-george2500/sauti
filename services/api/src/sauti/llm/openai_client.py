@@ -35,13 +35,14 @@ class OpenAiLlmClient:
     ) -> LlmTurn:
         if not self._api_key:
             raise ApiError(503, "AI_UNAVAILABLE", "AI is not configured")
-        # max_tokens: replies are 1–2 short sentences / a small tool-call JSON;
-        # the cap bounds spend if the model runs away.
+        # max_tokens: a conversation turn is 1–2 short sentences plus a small
+        # JSON envelope (~120-150 tokens observed); 220 bounds runaway spend
+        # while leaving comfortable headroom.
         body: dict = {
             "model": self._model,
             "messages": messages,
             "temperature": 0.6,
-            "max_tokens": 500,
+            "max_tokens": 220,
         }
         if tools:
             body["tools"] = [
