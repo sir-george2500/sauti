@@ -19,8 +19,13 @@ from sauti.schemas.common import PhonemeScore, PronReport
 
 @runtime_checkable
 class SpeechGateway(Protocol):
-    def tts(self, text: str, voice: str | None = None, cache_key: str | None = None) -> str:
-        """Synthesize `text`, return an audio_ref servable by the audio endpoint."""
+    # True when tts() is cheap enough to resolve before sending the partner
+    # frame (stub); False makes callers send text first, audio as a follow-up.
+    tts_inline: bool
+
+    async def tts(self, text: str, voice: str | None = None, cache_key: str | None = None) -> str:
+        """Synthesize `text`. Returns either an audio_ref servable by
+        GET /api/v1/speech/audio/{ref} or a full http(s) URL (cached CDN asset)."""
         ...
 
     def stt(self, audio_ref: str, lang: str) -> str: ...
@@ -39,6 +44,8 @@ class StubSpeechBackend:
     # An upload URL is only PUT-able for this long after being issued
     # (signed-URL expiry stand-in). Retries within the window are fine.
     UPLOAD_TTL_S = 15 * 60
+
+    tts_inline = True  # deterministic and instant — safe to resolve in-frame
 
     def __init__(self, audio_dir: str, tts_dir: str):
         self.audio_dir = Path(audio_dir)
@@ -85,7 +92,7 @@ class StubSpeechBackend:
         return None
 
     # -- gateway interface ---------------------------------------------------
-    def tts(self, text: str, voice: str | None = None, cache_key: str | None = None) -> str:
+    async def tts(self, text: str, voice: str | None = None, cache_key: str | None = None) -> str:
         key = cache_key or hashlib.sha256(f"{voice}|{text}".encode()).hexdigest()[:16]
         ref = f"tts-{key}.wav"
         path = self.tts_dir / ref

@@ -26,7 +26,9 @@ from sauti.routers import (
     scenarios,
     speech,
 )
+from sauti.speech.cache import CloudinaryAudioCache
 from sauti.speech.gateway import StubSpeechBackend
+from sauti.speech.real import RealSpeechBackend
 
 API_PREFIX = "/api/v1"
 
@@ -46,7 +48,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = build_engine(settings)
     app.state.sessionmaker = build_sessionmaker(app.state.engine)
     app.state.rate_limiter = RateLimiter(window_s=settings.rate_limit_window_s)
-    app.state.speech_gateway = StubSpeechBackend(settings.audio_dir, settings.tts_dir)
+    # SpeechGateway seam: real YourTTS (through the Cloudinary synthesize-once
+    # cache) when configured; deterministic stub for SAUTI_FAKE_AI=1 / e2e.
+    if settings.sauti_fake_ai or not settings.voice_service_url:
+        app.state.speech_gateway = StubSpeechBackend(settings.audio_dir, settings.tts_dir)
+    else:
+        tts_cache = CloudinaryAudioCache(
+            cloud_name=settings.cloudinary_cloud_name,
+            api_key=settings.cloudinary_api_key,
+            api_secret=settings.cloudinary_api_secret,
+            sessionmaker=app.state.sessionmaker,
+            local_dir=settings.tts_dir,
+            local_base_url=settings.app_base_url,
+        )
+        app.state.speech_gateway = RealSpeechBackend(
+            settings.audio_dir,
+            settings.tts_dir,
+            voice_service_url=settings.voice_service_url,
+            cache=tts_cache,
+        )
 
     # LlmClient seam: SAUTI_FAKE_AI=1 forces the scripted fake (e2e runs use this).
     if settings.sauti_fake_ai:

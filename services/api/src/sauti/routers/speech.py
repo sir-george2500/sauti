@@ -85,8 +85,13 @@ async def tts(item_id: uuid.UUID, db: DbDep, request: Request) -> RedirectRespon
     if item is None:
         raise ApiError(404, "NOT_FOUND", "Unknown item")
     speech = request.app.state.speech_gateway
-    ref = speech.tts(item.sentence, voice=str(item.voice_id or ""), cache_key=item.id.hex)
-    return RedirectResponse(url=f"/api/v1/speech/audio/{ref}", status_code=302)
+    try:
+        ref = await speech.tts(item.sentence, voice=str(item.voice_id or ""), cache_key=item.id.hex)
+    except Exception:  # voice service down and nothing cached — no beeps, just 503
+        raise ApiError(503, "TTS_UNAVAILABLE", "Audio is temporarily unavailable")
+    # Real backend returns a full URL (Cloudinary cache); stub returns a local ref.
+    url = ref if ref.startswith("http") else f"/api/v1/speech/audio/{ref}"
+    return RedirectResponse(url=url, status_code=302)
 
 
 @router.get("/speech/audio/{ref}")

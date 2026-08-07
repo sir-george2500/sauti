@@ -216,8 +216,15 @@ class ConversationOrchestrator:
         reply = (reply or "").strip() or FALLBACK_REPLY
         partner_text, gloss = self._split_gloss(reply)
 
-        audio_ref = self.speech.tts(partner_text, voice=str(scenario.voice_id or ""))
-        audio_url = f"{self.base_url}/api/v1/speech/audio/{audio_ref}"
+        try:
+            audio_ref = await self.speech.tts(partner_text, voice=str(scenario.voice_id or ""))
+            audio_url = (
+                audio_ref
+                if audio_ref.startswith("http")
+                else f"{self.base_url}/api/v1/speech/audio/{audio_ref}"
+            )
+        except Exception:  # TTS failure never breaks the chat — frame goes out silent
+            audio_ref, audio_url = None, None
 
         self.db.add(
             Message(
