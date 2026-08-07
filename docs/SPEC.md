@@ -48,10 +48,13 @@ design/          original design mockups (.dc.html)
   `public`; never touch them. Alembic manages the schema, forward-only.
 - No Redis in MVP: session-plan cache and rate-limit state live in Postgres/memory
   behind small interfaces so Redis can slot in later.
-- Speech models (TTS/STT/scorer) are **not** in MVP: `SpeechGateway` is a façade with
-  a deterministic stub backend. Endpoint shapes are final so real model servers
-  (YourTTS for Kinyarwanda per rent-rwanda, Kokoro/off-the-shelf for French) swap in
-  without client changes.
+- Speech: `SpeechGateway` is a façade with two backends. `RealSpeechBackend` (default
+  when `VOICE_SERVICE_URL` is set and `SAUTI_FAKE_AI=0`) synthesizes Kinyarwanda TTS via
+  the rent-rwanda voice service (YourTTS, port 8091) through `CloudinaryAudioCache` —
+  every phrase is synthesized exactly once, keyed `sauti/tts/{sha256(voice|text)[:32]}`,
+  indexed in the `tts_cache` table, then served from Cloudinary forever (local WAV
+  fallback in `var/tts` if Cloudinary is unreachable). STT/scorer remain stubbed.
+  The deterministic stub backend stays for `SAUTI_FAKE_AI=1` / e2e.
 - LLM via `LlmClient` seam: OpenAI `gpt-4o-mini` in prod, `FakeLlmClient` in tests.
   Same pattern as rent-rwanda's Umufasha: the model only sees tool-resolved,
   DB-grounded data and CEFR-capped prompts.
@@ -123,10 +126,13 @@ GET  /vocab/decks -> situation decks with due counts; GET /vocab/decks/{tag} -> 
 POST /attempts {item_id, mode, score|answer, audio_ref?} -> updated SrsState (+pron for speak)
 POST /speech/upload-url {content_type} -> {upload_url, audio_ref}   (MVP: local storage)
 POST /speech/score {item_id, audio_ref} -> PronReport
-GET  /tts/{item_id} -> 302 to audio (MVP: stub/silence file, shape final)
+GET  /tts/{item_id} -> 302 to audio (real mode: cached Cloudinary WAV; stub mode: local file)
 GET  /scenarios -> conversation scenarios for user level
 WS   /ws/conversation/{scenario_id}  client sends {text} or {audio_ref};
-     server streams {type: partner|coach|goal|error, text, gloss?, coach?, audio_url?}
+     server streams {type: partner|coach|goal|error, text, gloss?, coach?, audio_url?}.
+     Real speech backend: the partner frame arrives text-first (audio_url null) and a
+     follow-up {type: partner_audio, audio_url} frame carries the synthesized audio when
+     ready; stub backend (SAUTI_FAKE_AI=1) keeps audio_url inline on the partner frame.
 POST /placement/start -> {session_id, first question}
 POST /placement/answer {session_id, item_id, answer} -> next question | {result, placed_level}
 GET  /courses -> the three courses with availability
