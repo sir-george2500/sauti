@@ -130,6 +130,13 @@ export function rewindSrsDue(email: string): number {
   const out = execFileSync("uv", ["run", "python", script, email], {
     cwd: API_DIR,
     encoding: "utf-8",
+    env: {
+      ...process.env,
+      // The suite runs against the disposable local e2e Postgres (see
+      // scripts/e2e-db.sh + playwright.config.ts webServer), not the remote
+      // dev DB from .env — the rewind must hit the same database the API is on.
+      POSTGRES_URL: "postgresql://postgres:sauti-e2e@localhost:55432/postgres",
+    },
   });
   return parseInt(out.trim(), 10);
 }

@@ -60,11 +60,18 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "uv run uvicorn sauti.main:app --port 8000",
+      // E2e runs against a disposable LOCAL Postgres (script boots/reuses a
+      // docker container, migrates and seeds it) — the remote Supabase pooler
+      // is ~380 ms away and its per-query round-trip cost makes a browser
+      // suite both slow and latency-flaky. Dev/prod keep the remote DB.
+      command:
+        "bash scripts/e2e-db.sh && " +
+        "POSTGRES_URL=postgresql://postgres:sauti-e2e@localhost:55432/postgres " +
+        "uv run uvicorn sauti.main:app --port 8000",
       cwd: API_DIR,
       url: "http://localhost:8000/healthz",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
+      reuseExistingServer: false,
+      timeout: 180_000,
       env: {
         SAUTI_FAKE_AI: "1",
         RATE_LIMIT_AUTH_MAX: "100000",
