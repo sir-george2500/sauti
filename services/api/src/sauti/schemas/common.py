@@ -36,6 +36,8 @@ class PronReport(BaseModel):
     overall: int = Field(ge=0, le=100)
     phonemes: list[PhonemeScore]
     tone_flags: list[str] = []
+    # What the recognizer heard ("We heard: …" on the pronunciation screen).
+    transcript: str | None = None
 
 
 class SessionBlock(BaseModel):
