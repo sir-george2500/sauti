@@ -46,10 +46,30 @@ export interface AuthResponse {
   user: User;
 }
 
-/** GET /me -> user + profile */
+/** GET /me -> user + profile + verification state */
 export interface MeResponse {
   user: User;
   profile: Profile;
+  /** Verification is non-blocking — false only drives the nudge banner. */
+  email_verified: boolean;
+}
+
+/** Generic acknowledgement from the email/verification endpoints. */
+export interface OkResponse {
+  ok: boolean;
+}
+
+export interface VerifyEmailRequest {
+  token: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,6 +223,18 @@ export interface ProgressResponse {
   eta?: RoadmapEta | null;
 }
 
+/** One kept speaking take — GET /progress/recordings ("Hear yourself change"). */
+export interface Recording {
+  id: string;
+  ts: string; // ISO datetime
+  /** Days since the user's first kept recording, 1-based. */
+  day_number: number;
+  item_sentence: string;
+  /** Playable as-is by an <audio> element. */
+  audio_url: string;
+  score: number; // 0..1
+}
+
 // ---------------------------------------------------------------------------
 // Vocab / SRS
 // ---------------------------------------------------------------------------
@@ -297,6 +329,8 @@ export interface Persona {
   name: string;
   role: string;
   description?: string | null;
+  /** The persona's scripted first message, served without an LLM call. */
+  opening_line?: { ky: string; en: string } | null;
 }
 
 export interface Scenario {

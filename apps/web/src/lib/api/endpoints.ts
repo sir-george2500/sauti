@@ -7,11 +7,13 @@ import type {
   Item,
   LoginRequest,
   MeResponse,
+  OkResponse,
   PlacementAnswerRequest,
   PlacementAnswerResponse,
   PlacementStartResponse,
   ProgressResponse,
   PronReport,
+  Recording,
   RegisterRequest,
   RoadmapLesson,
   RoadmapResponse,
@@ -46,12 +48,30 @@ export async function logout(): Promise<void> {
 
 export const getMe = () => apiFetch<MeResponse>("/me");
 
+export const verifyEmail = (token: string) =>
+  apiFetch<OkResponse>("/auth/verify-email", { method: "POST", body: { token } });
+
+/** Auth'd; the API answers a generic 200 even when already verified. */
+export const resendVerification = () =>
+  apiFetch<OkResponse>("/auth/resend-verification", { method: "POST" });
+
+/** Always resolves 200 whether or not the email has an account. */
+export const forgotPassword = (email: string) =>
+  apiFetch<OkResponse>("/auth/forgot-password", { method: "POST", body: { email } });
+
+export const resetPassword = (token: string, newPassword: string) =>
+  apiFetch<OkResponse>("/auth/reset-password", {
+    method: "POST",
+    body: { token, new_password: newPassword },
+  });
+
 // --- Content ----------------------------------------------------------------
 
 export const getCourses = () => apiFetch<Course[]>("/courses");
 export const getSessionToday = () => apiFetch<SessionPlan>("/session/today");
 export const getRoadmap = () => apiFetch<RoadmapResponse>("/roadmap");
 export const getProgress = () => apiFetch<ProgressResponse>("/progress");
+export const getRecordings = () => apiFetch<Recording[]>("/progress/recordings");
 export const getVocabDecks = () => apiFetch<VocabDecksResponse>("/vocab/decks");
 export const getVocabDeck = (tag: string) =>
   apiFetch<VocabDeckItemsResponse>(`/vocab/decks/${encodeURIComponent(tag)}`);
