@@ -15,6 +15,7 @@ from sauti.errors import ApiError
 from sauti.models import User
 from sauti.rate_limit import RateLimiter, client_key
 from sauti.security import parse_access_token
+from sauti.services.mail import Mailer
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -72,3 +73,11 @@ def get_llm_client(request: Request):
 
 def get_speech_gateway(request: Request):
     return request.app.state.speech_gateway
+
+
+def get_mailer(request: Request) -> Mailer:
+    """Mailer seam — ConsoleMailer in dev/tests, SmtpMailer when configured."""
+    return request.app.state.mailer
+
+
+MailerDep = Annotated[Mailer, Depends(get_mailer)]

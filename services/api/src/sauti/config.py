@@ -51,6 +51,24 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:8000"
     app_frontend_url: str = "http://localhost:3000"
 
+    # Outbound email (verification / password reset). SAUTI_FAKE_AI=1 or
+    # missing SMTP creds selects the capturing ConsoleMailer (see main.py).
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+    app_mail_from: str = "Sauti <no-reply@sauti.local>"
+
+    # Email-token lifetimes (hours). Verification links live a day; reset
+    # links are credentials and die fast.
+    verify_token_ttl_hours: int = 24
+    reset_token_ttl_hours: int = 1
+
+    # Cap on mail-sending endpoints (forgot-password per IP, resend-verification
+    # per user) inside the same fixed window as the other limits.
+    rate_limit_email_max: int = 5
+
     # Tests: NullPool so connections never outlive a test's event loop.
     db_null_pool: bool = False
 

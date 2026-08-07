@@ -26,6 +26,7 @@ from sauti.routers import (
     scenarios,
     speech,
 )
+from sauti.services.mail import ConsoleMailer, SmtpMailer
 from sauti.speech.cache import CloudinaryAudioCache
 from sauti.speech.gateway import StubSpeechBackend
 from sauti.speech.real import RealSpeechBackend
@@ -69,6 +70,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.tts_dir,
             voice_service_url=settings.voice_service_url,
             cache=tts_cache,
+        )
+
+    # Mailer seam: real SMTP only when fully configured and not in fake-AI
+    # mode; otherwise the capturing ConsoleMailer (dev, tests, e2e).
+    if settings.sauti_fake_ai or not (
+        settings.smtp_host and settings.smtp_username and settings.smtp_password
+    ):
+        app.state.mailer = ConsoleMailer()
+    else:
+        app.state.mailer = SmtpMailer(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
+            mail_from=settings.app_mail_from,
+            starttls=settings.smtp_starttls,
         )
 
     # LlmClient seam: SAUTI_FAKE_AI=1 forces the scripted fake (e2e runs use this).
