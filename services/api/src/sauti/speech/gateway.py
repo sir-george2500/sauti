@@ -17,6 +17,11 @@ from typing import Protocol, runtime_checkable
 from sauti.schemas.common import PhonemeScore, PronReport
 
 
+class SpeechUnavailableError(RuntimeError):
+    """The speech-recognition service is down/unreachable — callers degrade
+    (HTTP 503 on /speech/score, error frame on the conversation socket)."""
+
+
 @runtime_checkable
 class SpeechGateway(Protocol):
     # True when tts() is cheap enough to resolve before sending the partner
@@ -28,9 +33,14 @@ class SpeechGateway(Protocol):
         GET /api/v1/speech/audio/{ref} or a full http(s) URL (cached CDN asset)."""
         ...
 
-    def stt(self, audio_ref: str, lang: str) -> str: ...
+    async def stt(self, audio_ref: str, lang: str) -> str:
+        """Transcribe an uploaded take. Raises SpeechUnavailableError when the
+        recognizer is unreachable, FileNotFoundError for an unknown ref."""
+        ...
 
-    def score(self, audio_ref: str, item_id: str, phoneme_ref: dict) -> PronReport: ...
+    async def score(
+        self, audio_ref: str, item_id: str, sentence: str, phoneme_ref: dict
+    ) -> PronReport: ...
 
 
 def _seed(*parts: str) -> int:
@@ -100,7 +110,7 @@ class StubSpeechBackend:
             self._write_sine_wav(path, seed=_seed("tts", text, voice or ""))
         return ref
 
-    def stt(self, audio_ref: str, lang: str) -> str:
+    async def stt(self, audio_ref: str, lang: str) -> str:
         # Deterministic stand-in transcript; the real FastConformer replaces this.
         canned = {
             "rw": "Muraho, mwiriwe neza.",
@@ -109,7 +119,9 @@ class StubSpeechBackend:
         }
         return canned.get(lang, canned["rw"])
 
-    def score(self, audio_ref: str, item_id: str, phoneme_ref: dict) -> PronReport:
+    async def score(
+        self, audio_ref: str, item_id: str, sentence: str, phoneme_ref: dict
+    ) -> PronReport:
         seed = _seed("score", item_id, audio_ref)
         overall = 60 + seed % 36  # 60..95
         syllables = phoneme_ref.get("syllables") or [{"syl": "??", "tone": "L"}]
@@ -126,7 +138,12 @@ class StubSpeechBackend:
                 tone_flags.append(f"tone on '{name}' sounded flat — aim for a {'rise' if tone in ('H', 'R') else 'fall'}")
                 note = note or "tone contour missed"
             phonemes.append(PhonemeScore(phoneme=name, score=s, note=note))
-        return PronReport(overall=overall, phonemes=phonemes, tone_flags=tone_flags)
+        return PronReport(
+            overall=overall,
+            phonemes=phonemes,
+            tone_flags=tone_flags,
+            transcript=await self.stt(audio_ref, "rw"),
+        )
 
     # -- wav synthesis -------------------------------------------------------
     @staticmethod

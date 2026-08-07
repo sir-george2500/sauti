@@ -1,5 +1,7 @@
-"""Speech endpoints — stubbed but shape-final and deterministic."""
+"""Speech endpoints — stub determinism + the real backend behind a fake ASR seam."""
 from __future__ import annotations
+
+import httpx
 
 from tests.conftest import register_and_login
 
@@ -71,6 +73,99 @@ class TestScoreDeterminism:
             headers=auth["headers"],
         )
         assert r1.json() != r2.json()
+
+
+def swap_in_real_backend(app, handler) -> None:
+    """Replace the stub gateway with a RealSpeechBackend whose ASR client is an
+    httpx.MockTransport — real scoring code, no real NeMo service ever needed."""
+    from sauti.speech.cache import CloudinaryAudioCache
+    from sauti.speech.real import RealSpeechBackend
+
+    settings = app.state.settings
+    cache = CloudinaryAudioCache(
+        cloud_name="", api_key="", api_secret="",
+        sessionmaker=None, local_dir=settings.tts_dir,
+    )
+    app.state.speech_gateway = RealSpeechBackend(
+        settings.audio_dir,
+        settings.tts_dir,
+        voice_service_url="http://voice.invalid",
+        cache=cache,
+        asr_transport=httpx.MockTransport(handler),
+    )
+
+
+async def upload_take(client, headers) -> str:
+    r = await client.post(
+        "/api/v1/speech/upload-url", json={"content_type": "audio/webm"}, headers=headers
+    )
+    ref = r.json()["audio_ref"]
+    r = await client.put(f"/api/v1/speech/upload/{ref}", content=b"fake-opus-bytes")
+    assert r.status_code == 204
+    return ref
+
+
+class TestRealScoring:
+    async def test_matching_transcript_scores_high_with_transcript(self, app, client):
+        auth = await register_and_login(client)
+        item = await first_item(client, auth["headers"])
+        swap_in_real_backend(
+            app, lambda req: httpx.Response(200, json={"text": item["sentence"]})
+        )
+        ref = await upload_take(client, auth["headers"])
+        r = await client.post(
+            "/api/v1/speech/score",
+            json={"item_id": item["id"], "audio_ref": ref},
+            headers=auth["headers"],
+        )
+        assert r.status_code == 200
+        report = r.json()
+        assert report["overall"] >= 95
+        assert report["transcript"] == item["sentence"]
+        assert len(report["phonemes"]) == len(item["phoneme_ref"]["syllables"])
+
+    async def test_wrong_transcript_scores_low(self, app, client):
+        auth = await register_and_login(client)
+        item = await first_item(client, auth["headers"])
+        swap_in_real_backend(
+            app, lambda req: httpx.Response(200, json={"text": "ibirayi bishyushye cyane"})
+        )
+        ref = await upload_take(client, auth["headers"])
+        r = await client.post(
+            "/api/v1/speech/score",
+            json={"item_id": item["id"], "audio_ref": ref},
+            headers=auth["headers"],
+        )
+        assert r.status_code == 200
+        assert r.json()["overall"] <= 40
+
+    async def test_asr_down_maps_to_503(self, app, client):
+        auth = await register_and_login(client)
+        item = await first_item(client, auth["headers"])
+
+        def down(req):
+            raise httpx.ConnectError("ASR down")
+
+        swap_in_real_backend(app, down)
+        ref = await upload_take(client, auth["headers"])
+        r = await client.post(
+            "/api/v1/speech/score",
+            json={"item_id": item["id"], "audio_ref": ref},
+            headers=auth["headers"],
+        )
+        assert r.status_code == 503
+        assert r.json()["code"] == "STT_UNAVAILABLE"
+
+    async def test_unknown_audio_ref_404(self, app, client):
+        auth = await register_and_login(client)
+        item = await first_item(client, auth["headers"])
+        swap_in_real_backend(app, lambda req: httpx.Response(200, json={"text": "x"}))
+        r = await client.post(
+            "/api/v1/speech/score",
+            json={"item_id": item["id"], "audio_ref": "user-never-uploaded.webm"},
+            headers=auth["headers"],
+        )
+        assert r.status_code == 404
 
 
 class TestTts:

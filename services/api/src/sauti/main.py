@@ -70,6 +70,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.tts_dir,
             voice_service_url=settings.voice_service_url,
             cache=tts_cache,
+            asr_url=settings.sauti_asr_url,
+            sessionmaker=app.state.sessionmaker,
         )
 
     # Mailer seam: real SMTP only when fully configured and not in fake-AI

@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sauti.deps import CurrentUser, DbDep, SettingsDep
 from sauti.errors import ApiError
 from sauti.models import Item
+from sauti.speech.gateway import SpeechUnavailableError
 from sauti.schemas.common import PronReport
 from sauti.schemas.learning import SpeechScoreIn, UploadUrlIn, UploadUrlOut
 
@@ -76,7 +77,16 @@ async def score(body: SpeechScoreIn, user: CurrentUser, db: DbDep, request: Requ
     if item is None:
         raise ApiError(404, "NOT_FOUND", "Unknown item")
     speech = request.app.state.speech_gateway
-    return speech.score(body.audio_ref, str(item.id), item.phoneme_ref or {})
+    try:
+        return await speech.score(
+            body.audio_ref, str(item.id), item.sentence, item.phoneme_ref or {}
+        )
+    except SpeechUnavailableError:
+        raise ApiError(
+            503, "STT_UNAVAILABLE", "Speech scoring is temporarily unavailable — try again shortly"
+        )
+    except FileNotFoundError:
+        raise ApiError(404, "NOT_FOUND", "Unknown audio")
 
 
 @router.get("/tts/{item_id}")

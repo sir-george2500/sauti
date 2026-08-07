@@ -44,6 +44,8 @@ async def main(course_code: str = "KIN") -> None:
         settings.tts_dir,
         voice_service_url=settings.voice_service_url,
         cache=cache,
+        asr_url=settings.sauti_asr_url,
+        sessionmaker=maker,  # voice_id -> female/male mapping (Diane/Emmanuel)
     )
 
     known = await cache.preload()

@@ -11,6 +11,7 @@ from sauti.deps import CurrentUser, DbDep, SettingsDep, get_speech_gateway
 from sauti.errors import ApiError
 from sauti.models import Attempt, CanDo, Course, Item, Level, Profile, SrsState
 from sauti.schemas.common import SessionPlan
+from sauti.speech.gateway import SpeechUnavailableError
 from sauti.schemas.curriculum import SKILL_LABELS, CanDoOut, RoadmapEta, RoadmapOut
 from sauti.schemas.learning import (
     AttemptIn,
@@ -152,7 +153,12 @@ async def post_attempt(
     pron = None
     if body.mode == "speak" and body.audio_ref:
         speech = request.app.state.speech_gateway
-        pron = speech.score(body.audio_ref, str(item.id), item.phoneme_ref or {})
+        try:
+            pron = await speech.score(
+                body.audio_ref, str(item.id), item.sentence, item.phoneme_ref or {}
+            )
+        except (SpeechUnavailableError, FileNotFoundError):
+            pron = None  # pron detail is a bonus here — never fail the attempt
 
     attempt = Attempt(
         user_id=user.id,
