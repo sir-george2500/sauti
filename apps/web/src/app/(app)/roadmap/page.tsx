@@ -28,6 +28,62 @@ function unitPct(unit: RoadmapUnit): number {
   );
 }
 
+function LockGlyph() {
+  return (
+    <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 fill-current" aria-hidden>
+      <path d="M6 1a2.5 2.5 0 0 0-2.5 2.5V5H3a1 1 0 0 0-1 1v3.5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-.5V3.5A2.5 2.5 0 0 0 6 1Zm-1.5 4V3.5a1.5 1.5 0 1 1 3 0V5h-3Z" />
+    </svg>
+  );
+}
+
+/**
+ * Per-lesson pills under an unlocked unit — every done/current/available
+ * lesson reopens for revision; locked lessons render inert with a padlock.
+ */
+function LessonPills({ unit }: { unit: RoadmapUnit }) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[11px] transition-colors";
+  return (
+    <div className="mt-1.5 ml-[30px] flex flex-wrap gap-1.5" data-testid="roadmap-lessons">
+      {unit.lessons.map((l, i) => {
+        const label = `${unit.ord}.${i + 1}`;
+        if (l.status === "locked") {
+          return (
+            <span
+              key={l.id}
+              data-testid="roadmap-lesson"
+              data-status="locked"
+              title={`${l.title} — locked`}
+              className={`${base} cursor-default border-line text-ink-faint`}
+            >
+              {label} <LockGlyph />
+            </span>
+          );
+        }
+        const cls =
+          l.status === "done"
+            ? "border-line-strong text-green hover:border-green hover:bg-green-soft"
+            : l.status === "current"
+              ? "border-accent bg-accent font-semibold text-on-accent"
+              : "border-line-strong text-ink-soft hover:border-accent hover:text-accent";
+        return (
+          <Link
+            key={l.id}
+            href={`/lesson/${l.id}`}
+            data-testid="roadmap-lesson"
+            data-status={l.status}
+            title={l.status === "done" ? `${l.title} — revisit` : l.title}
+            className={`${base} ${cls}`}
+          >
+            {label}
+            {l.status === "done" ? <span aria-hidden>✓</span> : null}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function UnitRow({ unit }: { unit: RoadmapUnit }) {
   const firstLesson =
     unit.lessons.find((l) => l.status === "current") ??
@@ -69,13 +125,16 @@ function UnitRow({ unit }: { unit: RoadmapUnit }) {
 
   if (firstLesson && unit.status !== "locked") {
     return (
-      <Link
-        href={`/lesson/${firstLesson.id}`}
-        data-testid="roadmap-unit"
-        className={`mt-2.5 flex items-center gap-2.5 rounded-nav px-3 py-2.5 transition-colors hover:border-accent ${rowClass}`}
-      >
-        {inner}
-      </Link>
+      <div>
+        <Link
+          href={`/lesson/${firstLesson.id}`}
+          data-testid="roadmap-unit"
+          className={`mt-2.5 flex items-center gap-2.5 rounded-nav px-3 py-2.5 transition-colors hover:border-accent ${rowClass}`}
+        >
+          {inner}
+        </Link>
+        <LessonPills unit={unit} />
+      </div>
     );
   }
   return (
