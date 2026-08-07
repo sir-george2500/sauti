@@ -5,9 +5,10 @@ import { use, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRoadmap, lessonFromRoadmap, postAttempt } from "@/lib/api/endpoints";
 import { prefetchAudio } from "@/lib/audio-prefetch";
+import { lessonQuiz } from "@/lib/quiz";
 import { AudioButton } from "@/components/AudioButton";
 import { Markdown } from "@/components/Markdown";
-import { Mcq } from "@/components/Mcq";
+import { Quiz } from "@/components/Quiz";
 import {
   btnGhost,
   btnPrimary,
@@ -47,6 +48,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
 
   const { lesson, unitTitle, levelCefr, lessonNumber, lessonCount } = view;
   const situationTag = items[0]?.tags?.[0];
+  // quiz[] when the payload has it; the legacy single quick_check otherwise.
+  const quizQuestions = lessonQuiz(lesson);
 
   return (
     <article className="grid gap-3.5" data-testid="lesson">
@@ -95,20 +98,18 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         </section>
       ) : null}
 
-      {lesson.quick_check ? (
+      {quizQuestions.length > 0 ? (
         <Card testid="quick-check">
-          <CardLabel>Quick check</CardLabel>
+          <CardLabel>Lesson check</CardLabel>
           <div className="mt-1.5">
-            <Mcq
-              quickCheck={lesson.quick_check}
-              onAnswered={(correct) => {
-                const firstItem = items[0];
-                if (firstItem) {
-                  attempt.mutate({
-                    item_id: firstItem.id,
-                    mode: "read",
-                    score: correct ? 1 : 0,
-                  });
+            <Quiz
+              key={lesson.id}
+              questions={quizQuestions}
+              onAnswered={(question, correct) => {
+                // One read-mode attempt per question so each item feeds SRS.
+                const itemId = question.item_id ?? items[0]?.id;
+                if (itemId) {
+                  attempt.mutate({ item_id: itemId, mode: "read", score: correct ? 1 : 0 });
                 }
               }}
             />
