@@ -117,6 +117,12 @@ export interface Item {
   tags?: string[];
   audio_ref?: string | null;
   voice_id?: string | null;
+  /**
+   * Direct CDN URL for the item's native audio (Cloudinary-cached TTS).
+   * When present, players use it as-is — zero API hops; when null/absent the
+   * /tts/{item_id} route stays the fallback.
+   */
+  audio_url?: string | null;
 }
 
 export interface QuickCheckOption {
@@ -127,6 +133,24 @@ export interface QuickCheckOption {
 export interface QuickCheck {
   question: string;
   options: QuickCheckOption[];
+}
+
+export type QuizKind = "grammar" | "vocab" | "usage" | "culture";
+
+/**
+ * One question of the lesson quiz (4–6 per lesson). During rollout
+ * `quick_check` stays equal to `quiz[0]`, so older payloads without `quiz`
+ * still render via the quick_check fallback.
+ */
+export interface QuizQuestion {
+  ord: number;
+  kind: QuizKind;
+  question: string;
+  options: QuickCheckOption[];
+  /** Shown after answering, right or wrong. */
+  explanation: string;
+  /** Attempts for this question post against this item; fallback: the lesson's first item. */
+  item_id?: string | null;
 }
 
 /**
@@ -143,6 +167,7 @@ export interface RoadmapLesson {
   culture_note?: string | null;
   items?: Item[];
   quick_check?: QuickCheck | null;
+  quiz?: QuizQuestion[] | null;
 }
 
 export interface RoadmapUnit {

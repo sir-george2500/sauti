@@ -16,7 +16,10 @@ import type {
   Recording,
   RegisterRequest,
   RoadmapLesson,
+  RoadmapLevel,
   RoadmapResponse,
+  RoadmapStatus,
+  RoadmapUnit,
   Scenario,
   SessionPlan,
   SpeechScoreRequest,
@@ -77,39 +80,86 @@ export const getVocabDeck = (tag: string) =>
   apiFetch<VocabDeckItemsResponse>(`/vocab/decks/${encodeURIComponent(tag)}`);
 export const getScenarios = () => apiFetch<Scenario[]>("/scenarios");
 
+/** Neighbouring lesson in roadmap order — enough to render a nav link. */
+export interface LessonNavRef {
+  id: string;
+  title: string;
+  status: RoadmapStatus;
+  /** "1.2" — unit ord, then the 1-based lesson position within that unit. */
+  label: string;
+}
+
 export interface LessonView {
   lesson: RoadmapLesson;
   unitTitle: string;
   levelCefr: string;
   lessonNumber: number;
   lessonCount: number;
+  /** Previous lesson in roadmap order, across unit/level boundaries. */
+  prev_lesson_id: string | null;
+  /** Next lesson in roadmap order, across unit/level boundaries. */
+  next_lesson_id: string | null;
+  prev: LessonNavRef | null;
+  next: LessonNavRef | null;
+}
+
+interface FlatLesson {
+  lesson: RoadmapLesson;
+  unit: RoadmapUnit;
+  level: RoadmapLevel;
+  /** 0-based position within the unit. */
+  idxInUnit: number;
+}
+
+/** All lessons in course order (payload order: levels → units → lessons). */
+function flattenLessons(roadmap: RoadmapResponse): FlatLesson[] {
+  const out: FlatLesson[] = [];
+  for (const level of roadmap.levels) {
+    for (const unit of level.units) {
+      unit.lessons.forEach((lesson, idxInUnit) => out.push({ lesson, unit, level, idxInUnit }));
+    }
+  }
+  return out;
+}
+
+function navRef(entry: FlatLesson | undefined): LessonNavRef | null {
+  if (!entry) return null;
+  return {
+    id: entry.lesson.id,
+    title: entry.lesson.title,
+    status: entry.lesson.status,
+    label: `${entry.unit.ord}.${entry.idxInUnit + 1}`,
+  };
 }
 
 /**
  * SPEC §5 has no lesson-detail endpoint; lesson content is read out of the
  * roadmap payload (see docs/frontend-notes.md). Pure so pages can derive it
  * from the shared ["roadmap"] react-query cache instead of re-fetching the
- * (expensive) roadmap per screen.
+ * (expensive) roadmap per screen. Also derives the previous/next lesson in
+ * roadmap order (crossing unit and level boundaries) for revision navigation.
  */
 export function lessonFromRoadmap(
   roadmap: RoadmapResponse,
   lessonId: string,
 ): LessonView | null {
-  for (const level of roadmap.levels) {
-    for (const unit of level.units) {
-      const idx = unit.lessons.findIndex((l) => l.id === lessonId);
-      if (idx !== -1) {
-        return {
-          lesson: unit.lessons[idx],
-          unitTitle: unit.title,
-          levelCefr: level.cefr,
-          lessonNumber: idx + 1,
-          lessonCount: unit.lessons.length,
-        };
-      }
-    }
-  }
-  return null;
+  const flat = flattenLessons(roadmap);
+  const i = flat.findIndex((e) => e.lesson.id === lessonId);
+  if (i === -1) return null;
+  const { lesson, unit, level, idxInUnit } = flat[i];
+  const prev = navRef(flat[i - 1]);
+  const next = navRef(flat[i + 1]);
+  return {
+    lesson,
+    unitTitle: unit.title,
+    levelCefr: level.cefr,
+    lessonNumber: idxInUnit + 1,
+    lessonCount: unit.lessons.length,
+    prev_lesson_id: prev?.id ?? null,
+    next_lesson_id: next?.id ?? null,
+    prev,
+    next,
+  };
 }
 
 /** See lessonFromRoadmap — kept for callers outside a roadmap query. */
