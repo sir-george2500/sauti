@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getVocabDeck, postAttempt } from "@/lib/api/endpoints";
 import { reviewAttemptPayload } from "@/lib/srs";
 import { AudioButton } from "@/components/AudioButton";
-import { Card, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
+import { btnGhost, btnPrimary, Card, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
 import type { SrsGradeLabel } from "@/lib/api/types";
 
 const GRADES: { label: SrsGradeLabel; text: string; sub: string }[] = [
@@ -52,37 +52,35 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
   };
 
   return (
-    <div className="grid gap-6">
-      <div>
+    <div className="grid gap-3.5">
+      <div className="mb-2">
         <Kicker>Vocabulary · {deck.title}</Kicker>
         <PageTitle>{done ? "Deck rested." : deck.title}</PageTitle>
-        <p className="mt-2 text-sm text-ink-soft">
+        <Lead>
           {done
             ? `${reviewed} sentence${reviewed === 1 ? "" : "s"} reviewed — spacing does the remembering now.`
             : `Card ${index + 1} of ${items.length} — say it out loud before you flip.`}
-        </p>
+        </Lead>
       </div>
 
       {done ? (
         <Card testid="review-done" className="text-center">
-          <p className="ky text-2xl">Byiza cyane!</p>
+          <p className="ky text-2xl font-semibold">Byiza cyane!</p>
           <p className="mt-2 text-sm text-ink-soft">
             Everything due here is rescheduled. Come back when the rhythm calls.
           </p>
-          <Link
-            href="/vocab"
-            data-testid="back-to-decks"
-            className="mt-5 inline-block rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent-deep"
-          >
+          <Link href="/vocab" data-testid="back-to-decks" className={`mt-5 ${btnPrimary}`}>
             Back to decks
           </Link>
         </Card>
       ) : (
         <Card testid="review-card">
           <div className="flex min-h-[220px] flex-col items-center justify-center gap-4 py-6 text-center">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <AudioButton itemId={current.id} />
-              <p className="ky text-3xl leading-snug">{current.sentence}</p>
+              <p className="ky text-[26px] leading-snug font-semibold sm:text-[30px]">
+                {current.sentence}
+              </p>
             </div>
             {revealed ? (
               <p className="text-lg text-ink-soft" data-testid="review-gloss">
@@ -93,7 +91,7 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
                 type="button"
                 data-testid="reveal-card"
                 onClick={() => setRevealed(true)}
-                className="rounded-full border border-line bg-cream px-5 py-2 text-sm transition-colors hover:border-accent"
+                className={btnGhost}
               >
                 Show meaning
               </button>
@@ -108,13 +106,13 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
                   type="button"
                   data-testid={`grade-${g.label}`}
                   onClick={() => grade(g.label)}
-                  className={`rounded-xl border px-3 py-2.5 text-center transition-colors ${
+                  className={`cursor-pointer rounded-btn border-[1.5px] px-3 py-2.5 text-center transition-colors ${
                     g.label === "good" || g.label === "easy"
-                      ? "border-line bg-paper hover:border-accent hover:bg-accent-soft"
-                      : "border-line bg-paper hover:border-accent"
+                      ? "border-line bg-card hover:border-green hover:bg-green-soft"
+                      : "border-line bg-card hover:border-accent hover:bg-accent-soft"
                   }`}
                 >
-                  <span className="block text-sm font-medium">{g.text}</span>
+                  <span className="block text-sm font-semibold">{g.text}</span>
                   <span className="block text-xs text-ink-soft">{g.sub}</span>
                 </button>
               ))}

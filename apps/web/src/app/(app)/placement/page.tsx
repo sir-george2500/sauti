@@ -9,13 +9,7 @@ import {
   placementInitialState,
   placementReducer,
 } from "@/lib/placement-reducer";
-import { Card, ErrorNote, Kicker, PageTitle } from "@/components/ui";
-
-const FACTS = [
-  { big: "12–18", small: "questions" },
-  { big: "~15", small: "minutes" },
-  { big: "🎙", small: "includes speaking" },
-] as const;
+import { btnGhost, btnPrimary, Card, CardLabel, ErrorNote, Kicker, Lead, PageTitle } from "@/components/ui";
 
 export default function PlacementPage() {
   const [state, dispatch] = useReducer(placementReducer, placementInitialState);
@@ -54,14 +48,16 @@ export default function PlacementPage() {
 
   if (state.phase === "result") {
     return (
-      <div className="mx-auto grid max-w-xl gap-6">
+      <div className="grid gap-5">
         <div>
           <Kicker>Placement · Result</Kicker>
           <PageTitle>You start at {state.placedLevel}.</PageTitle>
         </div>
         <Card testid="placement-result">
-          <p className="ky text-5xl font-semibold text-accent-deep">{state.placedLevel}</p>
-          <p className="mt-3 leading-relaxed text-ink-soft">
+          <span className="flex h-11 w-14 items-center justify-center rounded-btn bg-accent font-mono text-[15px] font-semibold text-on-accent">
+            {state.placedLevel}
+          </span>
+          <p className="mt-4 max-w-lg leading-relaxed text-ink-soft">
             {state.result ??
               "Your roadmap now begins where your Kinyarwanda actually is — the first session is ready."}
           </p>
@@ -69,7 +65,7 @@ export default function PlacementPage() {
             type="button"
             data-testid="placement-finish"
             onClick={() => router.replace("/")}
-            className="mt-6 rounded-full bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep"
+            className={`mt-6 ${btnPrimary}`}
           >
             Go to today&rsquo;s session
           </button>
@@ -82,7 +78,7 @@ export default function PlacementPage() {
     const { question } = state;
     const number = question.number ?? state.answered + 1;
     return (
-      <div className="mx-auto grid max-w-xl gap-6">
+      <div className="grid gap-5">
         <div>
           <Kicker>
             Placement · Question {number}
@@ -91,8 +87,8 @@ export default function PlacementPage() {
         </div>
         <Card testid="placement-question">
           {state.error ? <ErrorNote message={state.error} testid="placement-error" /> : null}
-          <p className="ky mt-1 text-2xl leading-snug">{question.prompt}</p>
-          <div className="mt-5 grid gap-2">
+          <p className="ky mt-1 text-lg leading-snug">{question.prompt}</p>
+          <div className="mt-4 grid gap-2">
             {question.options.map((option) => {
               const selected = state.selected === option;
               return (
@@ -103,13 +99,13 @@ export default function PlacementPage() {
                   aria-pressed={selected}
                   disabled={state.submitting}
                   onClick={() => dispatch({ type: "SELECT", option })}
-                  className={`rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-70 ${
+                  className={`flex cursor-pointer items-center rounded-btn border-[1.5px] px-4 py-3 text-left transition-colors disabled:cursor-default disabled:opacity-70 ${
                     selected
                       ? "border-accent bg-accent-soft"
                       : "border-line bg-card hover:border-accent"
                   }`}
                 >
-                  <span className="ky">{option}</span>
+                  <span className="ky text-base">{option}</span>
                 </button>
               );
             })}
@@ -120,13 +116,13 @@ export default function PlacementPage() {
               data-testid="placement-submit"
               disabled={state.selected === null || state.submitting}
               onClick={submit}
-              className="rounded-full bg-accent px-6 py-2.5 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-50"
+              className={btnPrimary}
             >
               {state.submitting ? "Checking…" : "Answer"}
             </button>
           </div>
         </Card>
-        <p className="text-center text-xs text-ink-soft">
+        <p className="text-center text-xs text-ink-faint">
           Get one right and it pushes harder; miss and it eases off. No score mid-way — just keep going.
         </p>
       </div>
@@ -135,45 +131,52 @@ export default function PlacementPage() {
 
   // intro / starting
   return (
-    <div className="mx-auto grid max-w-xl gap-6">
+    <div className="grid gap-5">
       <div>
         <Kicker>Start here · Placement</Kicker>
         <PageTitle>Find your true starting point.</PageTitle>
-        <p className="mt-3 leading-relaxed text-ink-soft">
+        <Lead className="max-w-[560px]">
           The test adapts as you answer — get one right and it pushes harder, miss and it
           eases off. It ends by listening to you speak, because reading level and speaking
           level are rarely the same.
-        </p>
+        </Lead>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {FACTS.map((f) => (
-          <Card key={f.small} className="text-center">
-            <p className="ky text-2xl font-semibold">{f.big}</p>
-            <p className="mt-1 text-xs text-ink-soft">{f.small}</p>
-          </Card>
-        ))}
+      <div className="flex flex-wrap gap-2.5">
+        <span className="rounded-full border border-line bg-cream px-3.5 py-[7px] text-[12.5px] font-semibold text-ink-soft">
+          12–18 questions
+        </span>
+        <span className="rounded-full border border-line bg-cream px-3.5 py-[7px] text-[12.5px] font-semibold text-ink-soft">
+          ~15 minutes
+        </span>
+        <span className="rounded-full border border-green-line bg-green-soft px-3.5 py-[7px] text-[12.5px] font-semibold text-green">
+          Includes speaking
+        </span>
       </div>
+
+      <Card>
+        <CardLabel>How it works</CardLabel>
+        <p className="ky mt-2 text-lg">
+          Twelve to eighteen questions, then a short speaking check — most people finish in a
+          quarter of an hour.
+        </p>
+      </Card>
 
       {state.phase === "intro" && state.error ? (
         <ErrorNote message={state.error} testid="placement-error" />
       ) : null}
 
-      <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           data-testid="begin-placement"
           disabled={state.phase === "starting"}
           onClick={start}
-          className="rounded-full bg-accent px-6 py-3.5 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-60"
+          className={btnPrimary}
         >
           {state.phase === "starting" ? "Preparing…" : "Begin placement"}
         </button>
-        <Link
-          href="/"
-          data-testid="start-at-a1"
-          className="rounded-full border border-line bg-card px-6 py-3.5 text-center text-ink-soft transition-colors hover:border-accent hover:text-ink"
-        >
+        <Link href="/" data-testid="start-at-a1" className={btnGhost}>
           I&rsquo;m brand new — start at A1
         </Link>
       </div>

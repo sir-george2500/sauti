@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getVocabDecks } from "@/lib/api/endpoints";
-import { Card, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
+import { btnGreen, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
 
 export default function VocabPage() {
   const decks = useQuery({ queryKey: ["vocab-decks"], queryFn: getVocabDecks });
@@ -12,21 +12,21 @@ export default function VocabPage() {
   const totalDue = decks.data?.total_due ?? 0;
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="grid gap-3.5">
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-5">
         <div>
           <Kicker>Learn · Vocabulary</Kicker>
           <PageTitle>Words where you&rsquo;ll use them.</PageTitle>
-          <p className="mt-2 max-w-lg text-ink-soft">
+          <Lead className="max-w-lg">
             Organized by situation, not alphabet — every word arrives inside a sentence
             you&rsquo;d actually say.
-          </p>
+          </Lead>
         </div>
         {firstDue ? (
           <Link
             href={`/vocab/${encodeURIComponent(firstDue.tag)}`}
             data-testid="review-due"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent-deep"
+            className={btnGreen}
           >
             Review {totalDue} due · {Math.max(2, Math.round(totalDue * 0.6))} min
           </Link>
@@ -38,41 +38,49 @@ export default function VocabPage() {
       ) : decks.isError ? (
         <ErrorNote message="Your decks couldn't load. Refresh to try again." />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {decks.data.decks.map((deck) => (
-            <Link key={deck.tag} href={`/vocab/${encodeURIComponent(deck.tag)}`}>
-              <Card testid="vocab-deck" className="h-full transition-colors hover:border-accent">
+        <div className="grid gap-3.5 sm:grid-cols-2">
+          {decks.data.decks.map((deck) => {
+            const pct = Math.round(deck.mastery * 100);
+            return (
+              <Link
+                key={deck.tag}
+                href={`/vocab/${encodeURIComponent(deck.tag)}`}
+                data-testid="vocab-deck"
+                className="rounded-card border border-line bg-card p-5 shadow-card transition-colors hover:border-accent"
+              >
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="ky text-xl font-semibold">{deck.title}</p>
-                  <span className="text-sm font-medium text-accent-deep">
-                    {Math.round(deck.mastery * 100)}%
+                  <p className="ky text-[19px] font-semibold">{deck.title}</p>
+                  <span
+                    className={`font-mono text-[11px] ${pct > 0 ? "text-accent" : "text-ink-faint"}`}
+                  >
+                    {pct}%
                   </span>
                 </div>
-                <p className="mt-0.5 text-sm text-ink-soft">
+                <p className="mt-0.5 mb-3.5 text-[13px] text-ink-soft">
                   {deck.gloss} · {deck.word_count} words
                 </p>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-cream">
+                <div className="mb-3 h-1.5 overflow-hidden rounded-[3px] bg-track">
                   <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${Math.round(deck.mastery * 100)}%` }}
+                    className={`h-full ${pct >= 80 ? "bg-green" : "bg-accent"}`}
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
                 {deck.sample ? (
-                  <p className="mt-3 text-sm">
-                    <span className="ky">{deck.sample.sentence}</span>
-                    <span className="text-ink-soft"> — {deck.sample.gloss}</span>
+                  <p className="text-[13px] text-ink-soft">
+                    <span className="ky text-ink italic">{deck.sample.sentence}</span> —{" "}
+                    {deck.sample.gloss}
                   </p>
                 ) : null}
                 {deck.due_count > 0 ? (
-                  <p className="mt-3 text-xs font-medium text-accent-deep" data-testid="deck-due">
+                  <p className="mt-3 text-xs font-semibold text-accent" data-testid="deck-due">
                     {deck.due_count} due for review
                   </p>
                 ) : (
-                  <p className="mt-3 text-xs text-ink-soft">All rested — nothing due.</p>
+                  <p className="mt-3 text-xs text-ink-faint">All rested — nothing due.</p>
                 )}
-              </Card>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

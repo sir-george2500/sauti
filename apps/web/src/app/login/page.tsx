@@ -6,8 +6,15 @@ import { Suspense, useState } from "react";
 import { login } from "@/lib/api/endpoints";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
-import { ErrorNote } from "@/components/ui";
+import { btnPrimary, ErrorNote } from "@/components/ui";
 import { validateEmail, validateLoginPassword } from "@/lib/validate";
+
+const inputClass = (invalid: boolean) =>
+  `rounded-btn border bg-card px-4 py-3 text-[15px] outline-none focus:border-accent ${
+    invalid ? "border-ember" : "border-line-strong"
+  }`;
+
+const labelClass = "text-[11px] font-bold tracking-[0.13em] text-ink-soft uppercase";
 
 function LoginForm() {
   const router = useRouter();
@@ -52,9 +59,7 @@ function LoginForm() {
     <form onSubmit={onSubmit} className="grid gap-4" data-testid="login-form">
       {error ? <ErrorNote message={error} testid="login-error" /> : null}
       <label className="grid gap-1.5">
-        <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-          Email
-        </span>
+        <span className={labelClass}>Email</span>
         <input
           type="email"
           required
@@ -65,20 +70,16 @@ function LoginForm() {
           onBlur={() => setTouched((t) => ({ ...t, email: true }))}
           aria-invalid={touched.email && !!emailError}
           data-testid="login-email"
-          className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
-            touched.email && emailError ? "border-red-400" : "border-line"
-          }`}
+          className={inputClass(touched.email && !!emailError)}
         />
         {touched.email && emailError ? (
-          <span className="text-xs text-red-600" data-testid="login-email-error">
+          <span className="text-xs text-accent" data-testid="login-email-error">
             {emailError}
           </span>
         ) : null}
       </label>
       <label className="grid gap-1.5">
-        <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-          Password
-        </span>
+        <span className={labelClass}>Password</span>
         <input
           type="password"
           required
@@ -89,12 +90,10 @@ function LoginForm() {
           onBlur={() => setTouched((t) => ({ ...t, password: true }))}
           aria-invalid={touched.password && !!passwordError}
           data-testid="login-password"
-          className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
-            touched.password && passwordError ? "border-red-400" : "border-line"
-          }`}
+          className={inputClass(touched.password && !!passwordError)}
         />
         {touched.password && passwordError ? (
-          <span className="text-xs text-red-600" data-testid="login-password-error">
+          <span className="text-xs text-accent" data-testid="login-password-error">
             {passwordError}
           </span>
         ) : null}
@@ -103,7 +102,7 @@ function LoginForm() {
         type="submit"
         disabled={busy || (!formValid && (touched.email || touched.password))}
         data-testid="login-submit"
-        className="mt-2 rounded-full bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-60"
+        className={`mt-2 ${btnPrimary}`}
       >
         {busy ? "Signing in…" : "Sign in"}
       </button>
@@ -114,11 +113,19 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <p className="ky text-2xl font-semibold tracking-tight">sauti</p>
-      <p className="mt-1 text-[11px] tracking-[0.18em] text-ink-soft uppercase">
+      <div className="flex items-center gap-[9px]">
+        <svg width="24" height="13" viewBox="0 0 24 13" aria-hidden>
+          <path d="M0 13 L6 0 L12 13 Z" fill="#C2551A" />
+          <path d="M12 13 L18 0 L24 13 Z" fill="#D99A2B" />
+        </svg>
+        <span className="ky text-[23px] font-bold tracking-[-0.01em]">sauti</span>
+      </div>
+      <p className="mt-2 text-[10px] tracking-[0.14em] text-ink-faint uppercase">
         Speak it as it&rsquo;s spoken
       </p>
-      <h1 className="ky mt-8 text-3xl font-semibold">Murakaza neza — welcome back.</h1>
+      <h1 className="ky mt-8 text-[28px] font-semibold tracking-[-0.01em]">
+        Murakaza neza — welcome back.
+      </h1>
       <p className="mt-2 text-sm text-ink-soft">
         Your session is waiting. Rhythm beats streaks — pick up where you left off.
       </p>
@@ -129,7 +136,11 @@ export default function LoginPage() {
       </div>
       <p className="mt-6 text-sm text-ink-soft">
         New here?{" "}
-        <Link href="/register" className="text-accent-deep underline underline-offset-2" data-testid="to-register">
+        <Link
+          href="/register"
+          className="font-semibold text-accent transition-colors hover:text-accent-deep"
+          data-testid="to-register"
+        >
           Create an account
         </Link>
       </p>

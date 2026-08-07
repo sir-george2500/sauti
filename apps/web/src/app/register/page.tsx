@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCourses, login, register } from "@/lib/api/endpoints";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
-import { ErrorNote } from "@/components/ui";
+import { btnPrimary, ErrorNote } from "@/components/ui";
 import { validateEmail, validatePassword } from "@/lib/validate";
 import type { CourseCode } from "@/lib/api/types";
 
@@ -22,6 +22,13 @@ const PACE_OPTIONS = [
   { hours: 5, label: "5 h", sub: "steady" },
   { hours: 8, label: "8 h", sub: "immersed" },
 ];
+
+const labelClass = "text-[11px] font-bold tracking-[0.13em] text-ink-soft uppercase";
+
+const inputClass = (invalid: boolean) =>
+  `rounded-btn border bg-card px-4 py-3 text-[15px] outline-none focus:border-accent ${
+    invalid ? "border-ember" : "border-line-strong"
+  }`;
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -72,11 +79,19 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <p className="ky text-2xl font-semibold tracking-tight">sauti</p>
-      <p className="mt-1 text-[11px] tracking-[0.18em] text-ink-soft uppercase">
+      <div className="flex items-center gap-[9px]">
+        <svg width="24" height="13" viewBox="0 0 24 13" aria-hidden>
+          <path d="M0 13 L6 0 L12 13 Z" fill="#C2551A" />
+          <path d="M12 13 L18 0 L24 13 Z" fill="#D99A2B" />
+        </svg>
+        <span className="ky text-[23px] font-bold tracking-[-0.01em]">sauti</span>
+      </div>
+      <p className="mt-2 text-[10px] tracking-[0.14em] text-ink-faint uppercase">
         Speak it as it&rsquo;s spoken
       </p>
-      <h1 className="ky mt-8 text-3xl font-semibold">Start speaking, properly.</h1>
+      <h1 className="ky mt-8 text-[28px] font-semibold tracking-[-0.01em]">
+        Start speaking, properly.
+      </h1>
       <p className="mt-2 text-sm text-ink-soft">
         Pick a language and a weekly rhythm. One rest day never resets you.
       </p>
@@ -85,9 +100,7 @@ export default function RegisterPage() {
         {error ? <ErrorNote message={error} testid="register-error" /> : null}
 
         <fieldset>
-          <legend className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-            Course
-          </legend>
+          <legend className={labelClass}>Course</legend>
           <div className="mt-2 grid gap-2">
             {courses.map((c) => {
               const selected = c.code === courseCode;
@@ -97,15 +110,19 @@ export default function RegisterPage() {
                   type="button"
                   data-testid={`course-${c.code}`}
                   onClick={() => setCourseCode(c.code)}
-                  className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
+                  className={`flex cursor-pointer items-center justify-between rounded-btn border-[1.5px] px-4 py-3 text-left transition-colors ${
                     selected
                       ? "border-accent bg-accent-soft"
                       : "border-line bg-card hover:border-accent"
                   }`}
                 >
                   <span className="ky text-lg">{c.name}</span>
-                  <span className="text-xs text-ink-soft">
-                    {c.available ? (selected ? "chosen" : "full course") : "early — A1 only"}
+                  <span
+                    className={`font-mono text-[10px] uppercase ${
+                      selected ? "text-accent" : "text-ink-faint"
+                    }`}
+                  >
+                    {c.available ? (selected ? "chosen" : "full course") : "early · A1 only"}
                   </span>
                 </button>
               );
@@ -114,9 +131,7 @@ export default function RegisterPage() {
         </fieldset>
 
         <fieldset>
-          <legend className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-            Weekly pace
-          </legend>
+          <legend className={labelClass}>Weekly pace</legend>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {PACE_OPTIONS.map((p) => (
               <button
@@ -124,7 +139,7 @@ export default function RegisterPage() {
                 type="button"
                 data-testid={`pace-${p.hours}`}
                 onClick={() => setPace(p.hours)}
-                className={`rounded-xl border px-3 py-3 text-center transition-colors ${
+                className={`cursor-pointer rounded-btn border-[1.5px] px-3 py-3 text-center transition-colors ${
                   pace === p.hours
                     ? "border-accent bg-accent-soft"
                     : "border-line bg-card hover:border-accent"
@@ -141,9 +156,7 @@ export default function RegisterPage() {
         </fieldset>
 
         <label className="grid gap-1.5">
-          <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-            Email
-          </span>
+          <span className={labelClass}>Email</span>
           <input
             type="email"
             required
@@ -154,20 +167,16 @@ export default function RegisterPage() {
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
             aria-invalid={touched.email && !!emailError}
             data-testid="register-email"
-            className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
-              touched.email && emailError ? "border-red-400" : "border-line"
-            }`}
+            className={inputClass(touched.email && !!emailError)}
           />
           {touched.email && emailError ? (
-            <span className="text-xs text-red-600" data-testid="register-email-error">
+            <span className="text-xs text-accent" data-testid="register-email-error">
               {emailError}
             </span>
           ) : null}
         </label>
         <label className="grid gap-1.5">
-          <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
-            Password
-          </span>
+          <span className={labelClass}>Password</span>
           <input
             type="password"
             required
@@ -179,16 +188,14 @@ export default function RegisterPage() {
             onBlur={() => setTouched((t) => ({ ...t, password: true }))}
             aria-invalid={touched.password && !!passwordError}
             data-testid="register-password"
-            className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
-              touched.password && passwordError ? "border-red-400" : "border-line"
-            }`}
+            className={inputClass(touched.password && !!passwordError)}
           />
           {touched.password && passwordError ? (
-            <span className="text-xs text-red-600" data-testid="register-password-error">
+            <span className="text-xs text-accent" data-testid="register-password-error">
               {passwordError}
             </span>
           ) : (
-            <span className="text-xs text-ink-soft">
+            <span className="text-xs text-ink-faint">
               At least 8 characters — avoid the obvious ones.
             </span>
           )}
@@ -198,7 +205,7 @@ export default function RegisterPage() {
           type="submit"
           disabled={busy || (!formValid && (touched.email || touched.password))}
           data-testid="register-submit"
-          className="mt-1 rounded-full bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-60"
+          className={`mt-1 ${btnPrimary}`}
         >
           {busy ? "Creating your account…" : "Create account"}
         </button>
@@ -206,7 +213,11 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-sm text-ink-soft">
         Already learning?{" "}
-        <Link href="/login" className="text-accent-deep underline underline-offset-2" data-testid="to-login">
+        <Link
+          href="/login"
+          className="font-semibold text-accent transition-colors hover:text-accent-deep"
+          data-testid="to-login"
+        >
           Sign in
         </Link>
       </p>
