@@ -106,6 +106,13 @@ function LoginForm() {
       >
         {busy ? "Signing in…" : "Sign in"}
       </button>
+      <Link
+        href="/forgot-password"
+        className="justify-self-start text-sm font-semibold text-accent transition-colors hover:text-accent-deep"
+        data-testid="forgot-link"
+      >
+        Forgot password?
+      </Link>
     </form>
   );
 }
