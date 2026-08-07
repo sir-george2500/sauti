@@ -1,23 +1,75 @@
 @import "tailwindcss";
 
+/*
+ * Sauti design tokens — extracted from the design mockup
+ * (design/Imvugo App.dc.html). Warm paper ground, terracotta accent,
+ * deep bark sidebar, forest green for "done/good", gold for badges.
+ */
 @theme {
-  /* Warm, editorial palette: dark ink on paper, one clay accent. */
-  --color-paper: #faf7f0;
-  --color-cream: #f2ecdf;
-  --color-card: #fffdf8;
+  /* Ground */
+  --color-paper: #f3ede0;
+  --color-card: #fffdf6;
+  --color-cream: #f6f0e2;
+  --color-track: #ede4d2;
+  --color-line: #e7decc;
+  --color-line-strong: #d8cdb6;
+
+  /* Ink */
   --color-ink: #241c12;
-  --color-ink-soft: #7a6f5f;
-  --color-line: #e6ddcb;
-  --color-accent: #b0502a;
-  --color-accent-deep: #8a3c1e;
-  --color-accent-soft: #f6e3d6;
+  --color-ink-soft: #75695a;
+  --color-ink-faint: #a2937e;
 
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
-    "Times New Roman", serif;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  /* Terracotta accent */
+  --color-accent: #b4470b;
+  --color-accent-hover: #93390a;
+  --color-accent-deep: #8f3708;
+  --color-accent-soft: #f8e7db;
+  --color-accent-soft-line: #ebc3a8;
+  --color-ember: #c2551a;
+  --color-on-accent: #fbf5ea;
 
-  --shadow-card: 0 1px 2px rgb(36 28 18 / 0.05), 0 8px 24px -12px rgb(36 28 18 / 0.12);
+  /* Forest green — done / correct / native */
+  --color-green: #2f6b4f;
+  --color-green-hover: #265640;
+  --color-green-soft: #e4eee7;
+  --color-green-line: #bfd5c6;
+  --color-green-deep: #31462f;
+
+  /* Gold / amber — badges, culture notes */
+  --color-gold: #d99a2b;
+  --color-gold-text: #c98a1b;
+  --color-amber-soft: #f6ecd8;
+  --color-amber-line: #e4cfa4;
+  --color-amber-text: #9a6a14;
+  --color-amber-deep: #5c4a22;
+
+  /* Bark — dark sidebar & dark banners */
+  --color-bark: #221a10;
+  --color-bark-panel: #2c2416;
+  --color-bark-line: #3b3120;
+  --color-bark-mist: #8a7d66;
+  --color-bark-faint: #6e624c;
+  --color-bark-soft: #c9bca7;
+  --color-bark-mute: #b3a58c;
+  --color-bark-glow: #f0c9a6;
+  --color-bark-hi: #f6d9c2;
+  --color-bark-dot: #4a4030;
+  --color-rhythm-bg: #3a2b12;
+  --color-rhythm-line: #55401b;
+  --color-rhythm-text: #efc98f;
+
+  /* Radii from the mockup: cards 14, buttons/options 10, nav rows 9 */
+  --radius-card: 14px;
+  --radius-btn: 10px;
+  --radius-nav: 9px;
+
+  --shadow-card: 0 1px 2px rgb(36 28 18 / 0.04), 0 10px 28px -18px rgb(36 28 18 / 0.14);
+}
+
+@theme inline {
+  --font-sans: var(--font-instrument-sans), "Instrument Sans", system-ui, sans-serif;
+  --font-display: var(--font-source-serif), "Source Serif 4", Georgia, serif;
+  --font-mono: var(--font-spline-mono), "Spline Sans Mono", ui-monospace, monospace;
 }
 
 html {
@@ -31,6 +83,24 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::placeholder {
+  color: var(--color-ink-faint);
+}
+
+@keyframes sauti-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-rhythm {
+  animation: sauti-pulse 2.4s infinite;
+}
+
 /* Kinyarwanda text is first-class: serif display face, comfortable size. */
 .ky {
   font-family: var(--font-display);
@@ -38,7 +108,9 @@ body {
 
 /* Rendered lesson markdown (grammar_md). */
 .prose-grammar {
-  line-height: 1.75;
+  font-family: var(--font-display);
+  font-size: 1.03rem;
+  line-height: 1.7;
 }
 .prose-grammar > * + * {
   margin-top: 0.9em;
@@ -61,11 +133,8 @@ body {
   font-size: 1.05rem;
 }
 .prose-grammar strong {
-  color: var(--color-accent-deep);
-  font-weight: 650;
-}
-.prose-grammar em {
-  font-family: var(--font-display);
+  color: var(--color-accent);
+  font-weight: 600;
 }
 .prose-grammar ul,
 .prose-grammar ol {
@@ -81,35 +150,40 @@ body {
   margin-top: 0.35em;
 }
 .prose-grammar code {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
   background: var(--color-cream);
   border-radius: 0.3rem;
   padding: 0.05em 0.35em;
 }
 .prose-grammar .table-wrap {
   overflow-x: auto;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
 }
 .prose-grammar table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 .prose-grammar th {
   text-align: left;
-  font-size: 0.7rem;
+  font-family: var(--font-sans);
+  font-size: 0.66rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-ink-soft);
-  font-weight: 600;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--color-line);
+  font-weight: 700;
+  padding: 0.6rem 1rem;
+  background: var(--color-cream);
 }
 .prose-grammar td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--color-line);
+  padding: 0.7rem 1rem;
+  border-top: 1px solid #f0e8d8;
   font-family: var(--font-display);
 }
 .prose-grammar td:last-child {
   font-family: var(--font-sans);
+  font-size: 0.85rem;
   color: var(--color-ink-soft);
 }
