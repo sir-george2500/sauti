@@ -14,6 +14,18 @@ class OpenAiLlmClient:
         self._api_key = api_key
         self._model = model
         self._timeout = timeout_s
+        # One pooled client for the app's lifetime: a conversation turn makes
+        # 2-4 sequential calls — re-handshaking TLS each time is pure latency.
+        self._client: httpx.AsyncClient | None = None
+
+    def _http(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=self._timeout)
+        return self._client
+
+    async def aclose(self) -> None:
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
 
     async def complete(
         self,
@@ -46,13 +58,12 @@ class OpenAiLlmClient:
         if tool_choice:
             body["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.post(
-                    OPENAI_URL,
-                    json=body,
-                    headers={"Authorization": f"Bearer {self._api_key}"},
-                )
-                resp.raise_for_status()
+            resp = await self._http().post(
+                OPENAI_URL,
+                json=body,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+            )
+            resp.raise_for_status()
         except httpx.HTTPError as exc:
             raise ApiError(502, "AI_ERROR", f"AI backend failed: {type(exc).__name__}")
         data = resp.json()

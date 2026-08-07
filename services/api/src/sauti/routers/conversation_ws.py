@@ -86,14 +86,14 @@ async def conversation_ws(websocket: WebSocket, scenario_id: uuid.UUID) -> None:
                     )
                     continue
                 try:
-                    events = await orchestrator.turn(conv, scenario, cefr, text)
+                    # Frames are streamed as they become ready (partner text
+                    # first; audio + coach follow) — not buffered to turn end.
+                    await orchestrator.turn(conv, scenario, cefr, text, websocket.send_json)
                 except Exception as exc:  # degrade gracefully — never break the socket
                     await db.rollback()
                     await websocket.send_json(
                         {"type": "error", "text": f"AI_ERROR: {type(exc).__name__}"}
                     )
                     continue
-                for event in events:
-                    await websocket.send_json(event)
         except WebSocketDisconnect:
             return

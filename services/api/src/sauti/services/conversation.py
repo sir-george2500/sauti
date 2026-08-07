@@ -11,9 +11,11 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -105,12 +107,21 @@ def build_system_prompt(scenario: Scenario, cefr: str) -> str:
     )
 
 
+SendFn = Callable[[dict], Awaitable[None]]
+
+
 class ConversationOrchestrator:
+    """One instance per WS connection. Conversation history is kept in memory
+    (a connection always opens a fresh conversation) — the remote DB is ~1 s
+    per round-trip, so per-turn DB work is a single commit at the end."""
+
     def __init__(self, db: AsyncSession, llm: LlmClient, speech: SpeechGateway, base_url: str):
         self.db = db
         self.llm = llm
         self.speech = speech
         self.base_url = base_url
+        self._history: list[dict] = []  # LLM-format user/assistant messages
+        self._user_turns = 0
 
     async def open(self, user_id: uuid.UUID, scenario: Scenario) -> Conversation:
         conv = Conversation(
@@ -120,8 +131,7 @@ class ConversationOrchestrator:
             started_at=datetime.now(timezone.utc),
         )
         self.db.add(conv)
-        await self.db.commit()
-        await self.db.refresh(conv)
+        await self.db.commit()  # id is a client-side uuid4 default — no refresh needed
         return conv
 
     async def _scenario_vocab(self, scenario: Scenario, cefr: str) -> list[dict]:
@@ -172,99 +182,125 @@ class ConversationOrchestrator:
                 text_lines.append(line)
         return " ".join(text_lines) or content.strip(), gloss
 
-    async def turn(
-        self, conv: Conversation, scenario: Scenario, cefr: str, text: str
-    ) -> list[dict]:
-        """One learner turn -> ordered server frames {type, text, gloss?, coach?, audio_url?}."""
-        events: list[dict] = []
-
-        history = list(
-            await self.db.scalars(
-                select(Message)
-                .where(Message.conversation_id == conv.id)
-                .order_by(Message.created_at)
-            )
-        )
-        user_turn_index = sum(1 for m in history if m.role == "user") + 1
-
-        self.db.add(Message(conversation_id=conv.id, role="user", text=text))
-        await self.db.commit()
-
-        messages: list[dict] = [system(build_system_prompt(scenario, cefr))]
-        for m in history:
-            if m.role == "user":
-                messages.append({"role": "user", "content": m.text})
-            elif m.role == "persona":
-                content = m.text + (f"\nEN: {m.gloss}" if m.gloss else "")
-                messages.append({"role": "assistant", "content": content})
-        messages.append(user_msg(text))
-
-        goals_hit: list[str] = []
-        reply: str | None = None
-        for _step in range(MAX_STEPS):
-            turn = await self.llm.complete(messages, tools=PARTNER_TOOLS)
-            if not turn.wants_tools():
-                reply = turn.content
-                break
-            messages.append(assistant_with_tools(turn.content, turn.tool_calls))
-            for call in turn.tool_calls:
-                result = await self._execute_tool(
-                    call.name, call.arguments_json, scenario, cefr, goals_hit
-                )
-                messages.append(tool_result(call.id, json.dumps(result)))
-
-        reply = (reply or "").strip() or FALLBACK_REPLY
-        partner_text, gloss = self._split_gloss(reply)
-
+    async def _tts_partner(self, partner_text: str, scenario: Scenario) -> tuple[str | None, str | None]:
+        """(audio_ref, audio_url) — (None, None) on failure: chat never breaks on TTS."""
         try:
-            audio_ref = await self.speech.tts(partner_text, voice=str(scenario.voice_id or ""))
-            audio_url = (
-                audio_ref
-                if audio_ref.startswith("http")
-                else f"{self.base_url}/api/v1/speech/audio/{audio_ref}"
-            )
-        except Exception:  # TTS failure never breaks the chat — frame goes out silent
-            audio_ref, audio_url = None, None
+            ref = await self.speech.tts(partner_text, voice=str(scenario.voice_id or ""))
+            url = ref if ref.startswith("http") else f"{self.base_url}/api/v1/speech/audio/{ref}"
+            return ref, url
+        except Exception:
+            return None, None
 
-        self.db.add(
-            Message(
+    async def turn(
+        self, conv: Conversation, scenario: Scenario, cefr: str, text: str, send: SendFn
+    ) -> None:
+        """One learner turn, streamed as frames {type, text, gloss?, coach?, audio_url?}.
+
+        Latency shape (the DB and the LLM are both ~1 s+ per round-trip):
+        - the coach pass only needs the learner's text -> runs concurrently
+          with the partner tool loop from the very start;
+        - the partner TEXT frame is sent as soon as the loop yields it — audio
+          follows as a {type: "partner_audio"} frame when synthesis is slow
+          (real backend), or inline on the partner frame when instant (stub);
+        - persistence is a single commit after all frames are out.
+        """
+        self._user_turns += 1
+        turn_started = datetime.now(timezone.utc)
+        coach_task = asyncio.create_task(self._coach_pass(text, cefr, self._user_turns))
+        tts_task: asyncio.Task | None = None
+        try:
+            messages = [system(build_system_prompt(scenario, cefr)), *self._history, user_msg(text)]
+
+            goals_hit: list[str] = []
+            reply: str | None = None
+            for _step in range(MAX_STEPS):
+                turn = await self.llm.complete(messages, tools=PARTNER_TOOLS)
+                if not turn.wants_tools():
+                    reply = turn.content
+                    break
+                messages.append(assistant_with_tools(turn.content, turn.tool_calls))
+                for call in turn.tool_calls:
+                    result = await self._execute_tool(
+                        call.name, call.arguments_json, scenario, cefr, goals_hit
+                    )
+                    messages.append(tool_result(call.id, json.dumps(result)))
+
+            reply = (reply or "").strip() or FALLBACK_REPLY
+            partner_text, gloss = self._split_gloss(reply)
+
+            tts_task = asyncio.create_task(self._tts_partner(partner_text, scenario))
+            audio_ref: str | None = None
+            audio_url: str | None = None
+            if self.speech.tts_inline:  # stub: instant + e2e expects it in-frame
+                audio_ref, audio_url = await tts_task
+                tts_task = None
+
+            await send(
+                {"type": "partner", "text": partner_text, "gloss": gloss, "audio_url": audio_url}
+            )
+            for goal in goals_hit:
+                await send({"type": "goal", "text": goal})
+
+            notes = await coach_task  # started at turn open — usually already done
+            coach_task = None
+
+            # Persist the turn in one commit BEFORE the remaining frames go out
+            # (the coach LLM wait already overlapped the partner loop, so this
+            # costs almost nothing) — a client disconnecting the moment it has
+            # its frames must never lose the turn. created_at is assigned with
+            # strictly increasing offsets so ORDER BY created_at reproduces
+            # frame order even within one flush.
+            def at(i: int) -> datetime:
+                return turn_started + timedelta(milliseconds=i)
+
+            self.db.add(Message(conversation_id=conv.id, role="user", text=text, created_at=at(0)))
+            persona_msg = Message(
                 conversation_id=conv.id,
                 role="persona",
                 text=partner_text,
                 gloss=gloss,
                 audio_ref=audio_ref,
+                created_at=at(1),
             )
-        )
-
-        if goals_hit:
-            merged = list(conv.goals_met or [])
-            for g in goals_hit:
-                if g not in merged:
-                    merged.append(g)
-            conv.goals_met = merged
-
-        events.append(
-            {"type": "partner", "text": partner_text, "gloss": gloss, "audio_url": audio_url}
-        )
-        for goal in goals_hit:
-            events.append({"type": "goal", "text": goal})
-
-        # Coach pass — one forced tool call for structured extraction, then the
-        # server-side policy decides what the learner sees.
-        notes = await self._coach_pass(text, cefr, user_turn_index)
-        for note in notes:
-            self.db.add(
-                Message(
-                    conversation_id=conv.id,
-                    role="coach",
-                    text=note.body,
-                    coach=note.model_dump(),
+            self.db.add(persona_msg)
+            for i, note in enumerate(notes):
+                self.db.add(
+                    Message(
+                        conversation_id=conv.id,
+                        role="coach",
+                        text=note.body,
+                        coach=note.model_dump(),
+                        created_at=at(2 + i),
+                    )
                 )
-            )
-            events.append({"type": "coach", "text": note.body, "coach": note.model_dump()})
+            if goals_hit:
+                merged = list(conv.goals_met or [])
+                for g in goals_hit:
+                    if g not in merged:
+                        merged.append(g)
+                conv.goals_met = merged
+            await self.db.commit()
 
-        await self.db.commit()
-        return events
+            for note in notes:
+                await send({"type": "coach", "text": note.body, "coach": note.model_dump()})
+
+            if tts_task is not None:
+                audio_ref, audio_url = await tts_task
+                tts_task = None
+                if audio_url:
+                    await send({"type": "partner_audio", "audio_url": audio_url})
+                if audio_ref:  # backfill the persisted message; best-effort
+                    persona_msg.audio_ref = audio_ref
+                    await self.db.commit()
+
+            self._history.append(user_msg(text))
+            self._history.append(
+                {"role": "assistant", "content": partner_text + (f"\nEN: {gloss}" if gloss else "")}
+            )
+        finally:
+            for task in (coach_task, tts_task):
+                if task is not None:
+                    task.cancel()
 
     async def _coach_pass(self, text: str, cefr: str, user_turn_index: int) -> list[CoachNote]:
         prompt = (

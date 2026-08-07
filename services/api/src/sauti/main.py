@@ -40,6 +40,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         settings.validate_runtime()  # e.g. JWT secret >= 32 bytes, enforced at startup
         yield
+        aclose = getattr(app.state.llm_client, "aclose", None)
+        if aclose is not None:
+            await aclose()
         await app.state.engine.dispose()
 
     app = FastAPI(title="Sauti API", version="0.1.0", lifespan=lifespan)
