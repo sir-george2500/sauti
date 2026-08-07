@@ -107,7 +107,51 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
         </Card>
       ) : null}
 
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+      {view.prev || view.next ? (
+        <nav
+          className="mt-1.5 flex items-center justify-between gap-3"
+          aria-label="Lesson navigation"
+          data-testid="lesson-nav"
+        >
+          {view.prev ? (
+            <Link
+              href={`/lesson/${view.prev.id}`}
+              className={btnGhost}
+              data-testid="lesson-prev"
+              title={view.prev.title}
+            >
+              ← Lesson {view.prev.label}
+            </Link>
+          ) : (
+            <span aria-hidden />
+          )}
+          {view.next ? (
+            view.next.status !== "locked" ? (
+              <Link
+                href={`/lesson/${view.next.id}`}
+                className={btnGhost}
+                data-testid="lesson-next"
+                data-status={view.next.status}
+                title={view.next.title}
+              >
+                Lesson {view.next.label} →
+              </Link>
+            ) : (
+              <span
+                className={`${btnGhost} cursor-default opacity-50 hover:border-line-strong hover:text-ink-soft`}
+                aria-disabled="true"
+                data-testid="lesson-next"
+                data-status="locked"
+                title="Finish the road to here first"
+              >
+                Lesson {view.next.label} · Locked
+              </span>
+            )
+          ) : null}
+        </nav>
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/roadmap" className={btnGhost} data-testid="back-to-roadmap">
           ← Back to roadmap
         </Link>
