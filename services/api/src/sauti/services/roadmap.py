@@ -22,6 +22,13 @@ from sauti.schemas.curriculum import (
     RoadmapUnit,
 )
 from sauti.services import progress as progress_svc
+from sauti.services.audio import audio_urls_for_items
+
+
+def item_out(item, audio_urls: dict[uuid.UUID, str]) -> ItemOut:
+    out = ItemOut.model_validate(item, from_attributes=True)
+    out.audio_url = audio_urls.get(item.id)
+    return out
 
 
 def build_quick_check(lesson: Lesson, distractor_pool: list[str]) -> QuickCheck | None:
@@ -64,6 +71,12 @@ async def build_roadmap(
     studied = await progress_svc.studied_item_ids(db, user_id)
     current_lesson, current_unit, current_level = progress_svc.roadmap_position(levels, studied)
 
+    # One bulk tts_cache lookup for every embedded item (never per-item).
+    all_items = [
+        i for level in levels for u in level.units for les in u.lessons for i in les.items
+    ]
+    audio_urls = await audio_urls_for_items(db, all_items)
+
     out_levels: list[RoadmapLevel] = []
     for level in levels:
         unit_glosses = {u.id: [i.gloss for les in u.lessons for i in les.items] for u in level.units}
@@ -91,10 +104,7 @@ async def build_roadmap(
                         status=status,
                         grammar_md=lesson.grammar_md,
                         culture_note=lesson.culture_note,
-                        items=[
-                            ItemOut.model_validate(i, from_attributes=True)
-                            for i in lesson.items
-                        ],
+                        items=[item_out(i, audio_urls) for i in lesson.items],
                         quick_check=build_quick_check(lesson, unit_glosses[unit.id]),
                     )
                 )

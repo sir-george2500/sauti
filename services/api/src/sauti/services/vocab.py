@@ -16,6 +16,7 @@ from sauti.schemas.learning import (
     VocabDeckSample,
     VocabDecksOut,
 )
+from sauti.services.audio import audio_urls_for_items
 
 MASTERY_STABILITY_DAYS = 21.0  # an item ~3 weeks stable counts as mastered
 
@@ -108,9 +109,15 @@ async def deck_detail(
     states = await _srs_by_item(db, user_id)
     due_ids = [i.id for i in items if (s := states.get(i.id)) and _aware(s.due_at) <= now]
     title, _gloss = _names(tag)
+    audio_urls = await audio_urls_for_items(db, items)  # one bulk query, never per-item
+    out_items = []
+    for i in items:
+        item_out = ItemOut.model_validate(i, from_attributes=True)
+        item_out.audio_url = audio_urls.get(i.id)
+        out_items.append(item_out)
     return VocabDeckItemsOut(
         tag=tag,
         title=title,
-        items=[ItemOut.model_validate(i, from_attributes=True) for i in items],
+        items=out_items,
         due_item_ids=due_ids,
     )

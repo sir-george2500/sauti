@@ -33,6 +33,9 @@ class ItemOut(BaseModel):
     audio_ref: str | None = None
     voice_id: uuid.UUID | None = None
     phoneme_ref: dict = {}
+    # Cached TTS URL (Cloudinary), playable as-is by an <audio> element.
+    # Null when not yet cached — the client falls back to GET /tts/{item_id}.
+    audio_url: str | None = None
 
 
 class QuickCheckOption(BaseModel):

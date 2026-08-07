@@ -97,6 +97,85 @@ class TestVocabDecks:
         assert r.status_code == 404
 
 
+class TestItemAudioUrls:
+    """Item payloads carry the cached TTS URL directly — no GET /tts round trip
+    before play. Uncached items are null (client falls back to /tts)."""
+
+    @staticmethod
+    def _cache_audio(pg_url: str, sentences: list[str]) -> dict[str, str]:
+        """Insert tts_cache rows for the given KIN item sentences, using the
+        exact key derivation the speech cache uses. Returns sentence -> url."""
+        import psycopg
+
+        from sauti.speech.cache import cache_key
+
+        urls: dict[str, str] = {}
+        with psycopg.connect(pg_url) as conn:
+            for sentence in sentences:
+                row = conn.execute(
+                    "SELECT id, voice_id FROM sauti.items WHERE sentence = %s",
+                    (sentence,),
+                ).fetchone()
+                assert row is not None, f"seeded item not found: {sentence}"
+                key = cache_key(str(row[1] or ""), sentence)
+                url = f"https://res.cloudinary.com/sauti/video/upload/sauti/tts/{key}.wav"
+                conn.execute(
+                    "INSERT INTO sauti.tts_cache (id, key, voice, url, created_at, updated_at) "
+                    "VALUES (gen_random_uuid(), %s, %s, %s, now(), now())",
+                    (key, str(row[1] or ""), url),
+                )
+                urls[sentence] = url
+            conn.commit()
+        return urls
+
+    async def test_roadmap_items_carry_cached_audio_urls(self, client, pg_url):
+        urls = self._cache_audio(pg_url, ["Mwaramutse!", "Ni angahe?"])
+        auth = await register_and_login(client)
+        r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+        assert r.status_code == 200
+        items = {
+            i["sentence"]: i
+            for lvl in r.json()["levels"]
+            for u in lvl["units"]
+            for les in u["lessons"]
+            for i in les["items"]
+        }
+        assert items["Mwaramutse!"]["audio_url"] == urls["Mwaramutse!"]
+        assert items["Ni angahe?"]["audio_url"] == urls["Ni angahe?"]
+        # Uncached -> null, client falls back to GET /tts/{item_id}.
+        assert items["Mwiriwe neza."]["audio_url"] is None
+
+    async def test_vocab_deck_items_carry_cached_audio_urls(self, client, pg_url):
+        urls = self._cache_audio(pg_url, ["Ni angahe?"])
+        auth = await register_and_login(client)
+        r = await client.get("/api/v1/vocab/decks/market", headers=auth["headers"])
+        assert r.status_code == 200
+        deck_items = {i["sentence"]: i for i in r.json()["items"]}
+        assert deck_items["Ni angahe?"]["audio_url"] == urls["Ni angahe?"]
+        assert deck_items["Gabanya gato."]["audio_url"] is None
+
+    async def test_roadmap_resolves_audio_with_one_bulk_query(self, app, client, pg_url):
+        """The whole roadmap (all embedded items) costs exactly ONE tts_cache
+        query — the dev DB is ~380 ms/round-trip, so N+1 here is the 30 s bug."""
+        from sqlalchemy import event
+
+        self._cache_audio(pg_url, ["Mwaramutse!"])
+        auth = await register_and_login(client)
+        statements: list[str] = []
+
+        def record(conn, cursor, statement, params, context, executemany):
+            statements.append(statement)
+
+        event.listen(app.state.engine.sync_engine, "before_cursor_execute", record)
+        try:
+            r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+            assert r.status_code == 200
+        finally:
+            event.remove(app.state.engine.sync_engine, "before_cursor_execute", record)
+        tts_queries = [s for s in statements if "tts_cache" in s]
+        assert len(tts_queries) == 1, tts_queries
+
+
 class TestScenarios:
     async def test_a1_scenarios_listed_with_opening_lines(self, client):
         auth = await register_and_login(client)

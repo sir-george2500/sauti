@@ -23,6 +23,7 @@ API_DIR = Path(__file__).resolve().parents[1]
 TEST_JWT_SECRET = "test-secret-0123456789abcdef0123456789abcdef"
 
 DYNAMIC_TABLES = [
+    "tts_cache",
     "llm_usage",
     "llm_reply_cache",
     "cando_status",
