@@ -4,14 +4,28 @@ import { use, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { findItem, getUploadUrl, postAttempt, scoreSpeech, uploadAudio } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
-import { Card, ErrorNote, Kicker, LoadingNote, PageTitle, VoiceCredit } from "@/components/ui";
+import { Card, CardLabel, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
 import type { PronReport } from "@/lib/api/types";
+
+// Decorative waveforms, straight from the mockup.
+const NATIVE_BARS = [8, 16, 24, 30, 22, 12, 18, 28, 32, 24, 14, 8, 20, 26, 18, 10];
+const USER_BARS = [7, 14, 22, 26, 20, 10, 15, 24, 27, 20, 12, 7, 17, 22, 15, 8];
 
 function scoreWord(overall: number): string {
   if (overall >= 85) return "Clear";
   if (overall >= 70) return "Close";
   if (overall >= 50) return "Getting there";
   return "Keep going";
+}
+
+function Waveform({ bars, color }: { bars: number[]; color: string }) {
+  return (
+    <div className="flex h-[34px] flex-1 items-end gap-[2px]" aria-hidden>
+      {bars.map((h, i) => (
+        <span key={i} className={`w-1 rounded-[2px] ${color}`} style={{ height: `${h}px` }} />
+      ))}
+    </div>
+  );
 }
 
 export default function PronunciationPage({
@@ -88,90 +102,113 @@ export default function PronunciationPage({
   }
 
   const item = itemQuery.data;
+  const overall = report ? Math.round(report.overall) : null;
+  const scoreTone = overall !== null && overall >= 70 ? "text-green" : "text-gold-text";
+  const scoreRing = overall !== null && overall >= 70 ? "border-green" : "border-gold";
 
   return (
-    <div className="grid gap-6">
-      <div>
+    <div className="grid gap-3.5">
+      <div className="mb-2">
         <Kicker>Practice · Pronunciation</Kicker>
         <PageTitle>Say it like Kigali says it.</PageTitle>
       </div>
 
       <Card testid="target-phrase">
-        <Kicker>Target phrase</Kicker>
-        <p className="ky mt-3 text-3xl leading-snug sm:text-4xl">{item.sentence}</p>
-        <p className="mt-1 text-ink-soft">{item.gloss}</p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full border border-line bg-paper py-1 pr-4 pl-1">
-            <AudioButton itemId={item.id} testid="play-native" />
-            <span className="text-[10px] font-semibold tracking-[0.16em] text-ink-soft uppercase">
+        <CardLabel>Target phrase</CardLabel>
+        <p className="ky mt-3 text-[26px] leading-snug font-semibold sm:text-[30px]">
+          {item.sentence}
+        </p>
+        <p className="mt-1 text-[13px] text-ink-soft">{item.gloss}</p>
+        <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3">
+          <div className="flex min-w-[220px] flex-1 items-center gap-3">
+            <AudioButton itemId={item.id} size="sm" testid="play-native" />
+            <Waveform bars={NATIVE_BARS} color="bg-accent" />
+            <span className="flex-none font-mono text-[10px] text-ink-soft uppercase">
               Diane · Native
             </span>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-line bg-paper py-1 pr-4 pl-1">
-            <AudioButton itemId={item.id} slow testid="play-slow" />
-            <span className="text-[10px] font-semibold tracking-[0.16em] text-ink-soft uppercase">
-              Listen slowed down
-            </span>
+          <div className="flex items-center gap-3">
+            <AudioButton itemId={item.id} slow size="sm" testid="play-slow" />
+            <span className="font-mono text-[10px] text-ink-soft uppercase">Slowed down</span>
           </div>
         </div>
       </Card>
 
       <Card testid="recording-card">
         {error ? <ErrorNote message={error} testid="pron-error" /> : null}
-        <div className="mt-1 flex flex-col items-center gap-4 py-4">
-          {report ? (
-            <div className="text-center" data-testid="pron-score">
-              <p className="ky text-6xl font-semibold text-accent-deep">
-                {Math.round(report.overall)}
+        <div className="flex flex-col items-center gap-6 py-2 sm:flex-row sm:items-center sm:gap-8">
+          <div className="flex flex-1 flex-col gap-4">
+            {report ? (
+              <div className="flex items-center gap-3">
+                <Waveform
+                  bars={USER_BARS}
+                  color={overall !== null && overall >= 70 ? "bg-bark-dot" : "bg-gold"}
+                />
+                <span className="flex-none font-mono text-[10px] text-ink-soft uppercase">
+                  You · Take {take}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-soft">
+                Listen once, then record. Tone marks matter — flat tone is the #1 foreign tell.
               </p>
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-ink-soft uppercase">
-                {scoreWord(report.overall)} · You · Take {take}
+            )}
+            <div>
+              <button
+                type="button"
+                onClick={toggleRecord}
+                disabled={scoring}
+                data-testid="record-button"
+                aria-pressed={recording}
+                className={`cursor-pointer rounded-btn px-5 py-3 text-sm font-semibold transition-colors disabled:cursor-default disabled:opacity-60 ${
+                  recording ? "bg-bark text-paper" : "bg-accent text-on-accent hover:bg-accent-hover"
+                }`}
+              >
+                {scoring
+                  ? "Listening back…"
+                  : recording
+                    ? "■ Stop"
+                    : `● Record take ${take + 1}`}
+              </button>
+            </div>
+          </div>
+          {report && overall !== null ? (
+            <div className="flex-none text-center" data-testid="pron-score">
+              <p
+                className={`ky mx-auto flex h-[74px] w-[74px] items-center justify-center rounded-full border-[3px] text-[26px] font-bold ${scoreRing} ${scoreTone}`}
+              >
+                {overall}
+              </p>
+              <p className={`mt-2 text-[11px] font-bold tracking-[0.1em] uppercase ${scoreTone}`}>
+                {scoreWord(overall)} · Take {take}
               </p>
             </div>
-          ) : (
-            <p className="text-sm text-ink-soft">
-              Listen once, then record. Tone marks matter — flat tone is the #1 foreign tell.
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={toggleRecord}
-            disabled={scoring}
-            data-testid="record-button"
-            aria-pressed={recording}
-            className={`rounded-full px-7 py-3.5 font-medium transition-colors disabled:opacity-60 ${
-              recording
-                ? "bg-ink text-paper"
-                : "bg-accent text-paper hover:bg-accent-deep"
-            }`}
-          >
-            {scoring
-              ? "Listening back…"
-              : recording
-                ? "■ Stop"
-                : `● Record take ${take + 1}`}
-          </button>
+          ) : null}
         </div>
 
         {report ? (
-          <div className="mt-2 border-t border-line pt-5">
-            <h2 className="ky text-lg font-semibold">What to fix</h2>
-            <ul className="mt-3 grid gap-2" data-testid="phoneme-chips">
+          <div className="mt-4 border-t border-line pt-5">
+            <CardLabel>What to fix</CardLabel>
+            <ul className="mt-3 grid gap-2.5" data-testid="phoneme-chips">
               {report.phonemes.map((p, i) => (
                 <li
                   key={`${p.phoneme}-${i}`}
                   data-testid="phoneme-chip"
-                  className="flex items-start gap-3 rounded-xl border border-line bg-paper px-4 py-3"
+                  className="flex items-baseline gap-3"
                 >
-                  <span className="ky rounded-lg bg-cream px-2.5 py-1 text-lg leading-none">
+                  <span
+                    className={`flex-none rounded-lg px-3 py-1.5 font-mono text-[15px] ${
+                      p.score >= 70 ? "bg-green-soft text-green" : "bg-amber-soft text-amber-text"
+                    }`}
+                  >
                     {p.phoneme}
                   </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold tracking-wide text-ink-soft uppercase">
-                      {Math.round(p.score)} / 100
-                    </p>
-                    {p.note ? <p className="mt-0.5 text-sm leading-relaxed">{p.note}</p> : null}
-                  </div>
+                  <span className="min-w-0 text-sm leading-[1.55]">
+                    <span className="mr-2 font-mono text-[11px] text-ink-faint">
+                      {Math.round(p.score)}/100
+                    </span>
+                    {p.note ?? ""}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -181,7 +218,7 @@ export default function PronunciationPage({
                   <span
                     key={flag}
                     data-testid="tone-flag"
-                    className="rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs text-accent-deep"
+                    className="rounded-full border border-amber-line bg-amber-soft px-3 py-1 text-xs text-amber-text"
                   >
                     ♪ {flag}
                   </span>
@@ -191,10 +228,6 @@ export default function PronunciationPage({
           </div>
         ) : null}
       </Card>
-
-      <div className="flex justify-center">
-        <VoiceCredit name="Diane" />
-      </div>
     </div>
   );
 }
