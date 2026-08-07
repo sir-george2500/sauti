@@ -287,11 +287,13 @@ class TestConversationWs:
                 assert roles[0] == "persona"  # the opener is persisted first
                 assert roles[1] == "user"
             finally:
+                # Restore the seeded persona (which carries its own
+                # opening_line) — dropping the key would leak a non-seed
+                # state into later tests in the session.
                 with psycopg.connect(pg_url) as conn:
                     conn.execute(
-                        "UPDATE sauti.scenarios SET persona = persona - 'opening_line' "
-                        "WHERE id = %s",
-                        (scenario["id"],),
+                        "UPDATE sauti.scenarios SET persona = %s::jsonb WHERE id = %s",
+                        (json.dumps(scenario["persona"]), scenario["id"]),
                     )
                     conn.commit()
 
