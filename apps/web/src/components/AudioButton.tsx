@@ -32,12 +32,16 @@ export function AudioButton({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
 
+  // The element is lazily created per item and must be dropped when the item
+  // changes: review flows reuse this component instance across cards, and a
+  // cached element would keep replaying the first card's audio forever.
   useEffect(() => {
     return () => {
       audioRef.current?.pause();
       audioRef.current = null;
+      setPlaying(false);
     };
-  }, []);
+  }, [itemId]);
 
   const toggle = () => {
     if (playing) {
