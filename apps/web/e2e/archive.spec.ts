@@ -125,13 +125,18 @@ test("recordings archive: two takes surface as first vs latest, playable", async
     await expect(record).toContainText(`Record take ${take + 1}`, { timeout: 30_000 });
   }
 
-  // The API keeps both, chronological, day 1 (same-day takes).
-  const recordings = await getJson<RecordingPayload[]>(
-    page.request,
-    "/progress/recordings",
-    token,
-  );
-  expect(recordings).toHaveLength(2);
+  // The API keeps both, chronological, day 1 (same-day takes). The speak
+  // attempt posts fire-and-forget after scoring, so poll until the last one
+  // lands (same pattern as the vocab review spec).
+  let recordings: RecordingPayload[] = [];
+  await expect(async () => {
+    recordings = await getJson<RecordingPayload[]>(
+      page.request,
+      "/progress/recordings",
+      token,
+    );
+    expect(recordings).toHaveLength(2);
+  }).toPass({ timeout: 30_000 });
   expect(recordings[0].day_number).toBe(1);
   expect(recordings[1].day_number).toBe(1);
   expect(recordings[0].item_sentence).toBe(item.sentence);
