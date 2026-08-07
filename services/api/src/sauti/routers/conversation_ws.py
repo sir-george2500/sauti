@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sauti.models import Profile, Scenario, User
 from sauti.security import parse_access_token
 from sauti.services.conversation import ConversationOrchestrator
+from sauti.speech.gateway import SpeechUnavailableError
 
 router = APIRouter(tags=["conversation"])
 
@@ -58,6 +59,9 @@ async def conversation_ws(websocket: WebSocket, scenario_id: uuid.UUID) -> None:
             base_url=settings.app_base_url,
         )
         conv = await orchestrator.open(user_id, scenario)
+        # Scripted opener (persona greets first) from persona.opening_line —
+        # zero LLM calls; a no-op when the scenario has none. Best-effort.
+        await orchestrator.send_opener(conv, scenario, websocket.send_json)
 
         limiter = app.state.rate_limiter
         try:
@@ -73,8 +77,18 @@ async def conversation_ws(websocket: WebSocket, scenario_id: uuid.UUID) -> None:
                 text = (payload.get("text") or "").strip() if isinstance(payload, dict) else ""
                 audio_ref = payload.get("audio_ref") if isinstance(payload, dict) else None
                 if not text and audio_ref:
-                    # Stubbed STT: mic input arrives as an audio_ref (may be "stub:mic-take").
-                    text = app.state.speech_gateway.stt(str(audio_ref), "rw")
+                    # Mic input arrives as an audio_ref (stub accepts "stub:mic-take").
+                    try:
+                        text = await app.state.speech_gateway.stt(str(audio_ref), "rw")
+                    except (SpeechUnavailableError, FileNotFoundError):
+                        await websocket.send_json(
+                            {
+                                "type": "error",
+                                "text": "We couldn't hear that take — speech recognition "
+                                "is unavailable right now. Type your reply instead.",
+                            }
+                        )
+                        continue
                 if not text:
                     await websocket.send_json(
                         {"type": "error", "text": "Send {text} or {audio_ref}."}

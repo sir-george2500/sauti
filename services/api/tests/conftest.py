@@ -23,6 +23,8 @@ API_DIR = Path(__file__).resolve().parents[1]
 TEST_JWT_SECRET = "test-secret-0123456789abcdef0123456789abcdef"
 
 DYNAMIC_TABLES = [
+    "llm_usage",
+    "llm_reply_cache",
     "cando_status",
     "messages",
     "conversations",
@@ -30,6 +32,8 @@ DYNAMIC_TABLES = [
     "srs_state",
     "attempts",
     "refresh_tokens",
+    "email_verification_tokens",
+    "password_reset_tokens",
     "profiles",
     "users",
 ]

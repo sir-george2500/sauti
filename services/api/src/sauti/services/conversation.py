@@ -6,6 +6,10 @@ Cost model (every call burns tokens):
   separate coach extraction (2-4 calls/turn) is gone.
 - Scenario vocab is resolved from the DB once per conversation and inlined in
   the system prompt, so no vocab tool round-trip is needed.
+- Early turns (1-3) are served from sauti.llm_reply_cache when the normalized
+  learner text repeats — zero LLM calls on a hit.
+- The scenario opener (persona greets first) is scripted from
+  persona.opening_line — zero LLM calls.
 - The model only sees DB-grounded data: goals_met is validated against the
   scenario's goal list (hallucinated goals vanish); the vocab list in the
   prompt comes straight from curriculum rows.
@@ -15,20 +19,37 @@ Cost model (every call burns tokens):
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import re
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sauti.models import Conversation, Item, Lesson, Level, Message, Scenario, Unit
+from sauti.models import (
+    Conversation,
+    Item,
+    Lesson,
+    Level,
+    LlmReplyCache,
+    Message,
+    Scenario,
+    Unit,
+)
 from sauti.llm.client import LlmClient, ToolSpec, system, user as user_msg
 from sauti.services import coach as coach_policy
 from sauti.speech.gateway import SpeechGateway
 
 MAX_VOCAB = 12
+
+# Reply cache covers early turns only — the first exchanges of a scenario are
+# near-scripted ("Muraho!", "Ni angahe?") while deeper turns diverge with
+# conversation history.
+CACHED_TURNS = 3
 
 FALLBACK_TEXT = "Mbabarira, ntabwo numvise neza. Wongere uvuge?"
 FALLBACK_GLOSS = "Sorry, I did not quite understand. Could you say that again?"
@@ -104,6 +125,16 @@ def build_system_prompt(scenario: Scenario, cefr: str, vocab: list[dict]) -> str
     )
 
 
+def normalize_user_text(text: str) -> str:
+    """Cache-key normalization: lowercase, strip punctuation, collapse whitespace."""
+    return " ".join(re.sub(r"[^\w\s]", " ", text.lower()).split())
+
+
+def reply_cache_key(scenario_id: uuid.UUID, turn_index: int, user_text: str) -> str:
+    raw = f"{scenario_id}|{turn_index}|{normalize_user_text(user_text)}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
 SendFn = Callable[[dict], Awaitable[None]]
 
 
@@ -131,6 +162,49 @@ class ConversationOrchestrator:
         self.db.add(conv)
         await self.db.commit()  # id is a client-side uuid4 default — no refresh needed
         return conv
+
+    async def send_opener(self, conv: Conversation, scenario: Scenario, send: SendFn) -> None:
+        """Scripted persona greeting from persona.opening_line: {ky, en} —
+        ZERO LLM calls. Defensive (the key may not be seeded yet) and
+        best-effort: any failure leaves the conversation exactly as before."""
+        line = (scenario.persona or {}).get("opening_line")
+        if not isinstance(line, dict):
+            return
+        ky = str(line.get("ky") or "").strip()
+        if not ky:
+            return
+        en = str(line.get("en") or "").strip() or None
+        tts_task: asyncio.Task | None = None
+        try:
+            tts_task = asyncio.create_task(self._tts_partner(ky, scenario))
+            audio_ref: str | None = None
+            audio_url: str | None = None
+            if self.speech.tts_inline:  # stub: instant + e2e expects it in-frame
+                audio_ref, audio_url = await tts_task
+                tts_task = None
+
+            await send({"type": "partner", "text": ky, "gloss": en, "audio_url": audio_url})
+            msg = Message(
+                conversation_id=conv.id, role="persona", text=ky, gloss=en, audio_ref=audio_ref
+            )
+            self.db.add(msg)
+            await self.db.commit()
+            # The partner has spoken — the model must know it already greeted.
+            self._history.append({"role": "assistant", "content": ky})
+
+            if tts_task is not None:
+                audio_ref, audio_url = await tts_task
+                tts_task = None
+                if audio_url:
+                    await send({"type": "partner_audio", "audio_url": audio_url})
+                if audio_ref:
+                    msg.audio_ref = audio_ref
+                    await self.db.commit()
+        except Exception:
+            await self.db.rollback()
+        finally:
+            if tts_task is not None:
+                tts_task.cancel()
 
     async def _scenario_vocab(self, scenario: Scenario) -> list[dict]:
         tag = (scenario.persona or {}).get("situation_tag", "market")
@@ -175,6 +249,36 @@ class ConversationOrchestrator:
             return None
         return payload if isinstance(payload, dict) else None
 
+    async def _cached_or_llm_payload(self, scenario: Scenario, cefr: str, text: str) -> dict:
+        """Reply cache for turns 1-{CACHED_TURNS}: a hit serves the whole
+        structured payload with ZERO LLM calls (hits counter rides the turn's
+        commit); a miss calls the LLM once and stores the payload."""
+        key: str | None = None
+        if self._user_turns <= CACHED_TURNS:
+            key = reply_cache_key(scenario.id, self._user_turns, text)
+            row = await self.db.scalar(select(LlmReplyCache).where(LlmReplyCache.key == key))
+            if row is not None and isinstance(row.reply, dict) and row.reply.get("reply"):
+                row.hits += 1
+                return dict(row.reply)
+
+        payload = await self._llm_payload(scenario, cefr, text) or {}
+        if key is not None and str(payload.get("reply") or "").strip():
+            now = datetime.now(timezone.utc)
+            await self.db.execute(
+                pg_insert(LlmReplyCache)
+                .values(
+                    id=uuid.uuid4(),
+                    created_at=now,
+                    updated_at=now,
+                    key=key,
+                    scenario_id=scenario.id,
+                    reply=payload,
+                    hits=0,
+                )
+                .on_conflict_do_nothing(index_elements=["key"])  # racing turns: first wins
+            )  # committed with the rest of the turn
+        return payload
+
     @staticmethod
     def _coach_candidates(payload: dict) -> coach_policy.CoachCandidates:
         corrections = []
@@ -216,7 +320,7 @@ class ConversationOrchestrator:
         turn_started = datetime.now(timezone.utc)
         tts_task: asyncio.Task | None = None
         try:
-            payload = await self._llm_payload(scenario, cefr, text) or {}
+            payload = await self._cached_or_llm_payload(scenario, cefr, text)
 
             partner_text = str(payload.get("reply") or "").strip()
             gloss: str | None = str(payload.get("gloss") or "").strip() or None

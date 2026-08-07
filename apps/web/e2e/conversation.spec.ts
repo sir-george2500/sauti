@@ -4,7 +4,11 @@ import { freshUser, getJson } from "./helpers";
 interface Scenario {
   id: string;
   title: string;
-  persona: { name: string; role: string };
+  persona: {
+    name: string;
+    role: string;
+    opening_line?: { ky?: string; en?: string };
+  };
   goals: string[];
   umuco_tip?: string | null;
 }
@@ -35,6 +39,15 @@ test("Kimironko market conversation: partner, gloss, coach policy, goal", async 
   await expect(page.getByTestId("goal")).toHaveCount(kimironko.goals.length);
   await expect(page.getByTestId("hint-chip").first()).toBeVisible();
 
+  // Scenarios with persona.opening_line greet first: a scripted (zero-LLM)
+  // partner frame arrives on connect, before any learner input.
+  const openerKy = kimironko.persona.opening_line?.ky;
+  if (openerKy) {
+    await expect(
+      page.getByTestId("partner-message").filter({ hasText: openerKy }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
   // Send button enables once the WS is connected.
   const send = page.getByTestId("chat-send");
   await page.getByTestId("chat-input").fill("Muraho! Amakuru?");
@@ -43,10 +56,12 @@ test("Kimironko market conversation: partner, gloss, coach policy, goal", async 
 
   await expect(page.getByTestId("user-message")).toContainText("Muraho! Amakuru?");
 
-  // Scripted partner reply for a greeting turn.
-  const partner = page.getByTestId("partner-message").first();
+  // Scripted partner reply for a greeting turn (an opener may precede it, so
+  // select by text rather than position).
+  const partner = page
+    .getByTestId("partner-message")
+    .filter({ hasText: "Muraho neza!" });
   await expect(partner).toBeVisible({ timeout: 30_000 });
-  await expect(partner).toContainText("Muraho neza!");
 
   // Gloss toggle: shows "gloss", click reveals the EN line.
   const gloss = partner.getByTestId("gloss-toggle");
@@ -62,10 +77,9 @@ test("Kimironko market conversation: partner, gloss, coach policy, goal", async 
   await page.getByTestId("chat-input").fill("Ni angahe?");
   await send.click();
 
-  await expect(page.getByTestId("partner-message").nth(1)).toContainText(
-    "Ikilo cy'inyanya",
-    { timeout: 30_000 },
-  );
+  await expect(
+    page.getByTestId("partner-message").filter({ hasText: "Ikilo cy'inyanya" }),
+  ).toBeVisible({ timeout: 30_000 });
 
   // The "ask a price" goal is marked.
   const priceGoal = page.getByTestId("goal").filter({ hasText: "ask a price" });
