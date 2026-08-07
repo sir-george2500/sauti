@@ -95,6 +95,15 @@ export interface RoadmapItem {
   gloss: string;
 }
 
+export interface QuizQuestionPayload {
+  ord: number;
+  kind: string;
+  question: string;
+  options: { text: string; correct: boolean }[];
+  explanation: string;
+  item_id?: string | null;
+}
+
 export interface RoadmapPayload {
   course_code: string;
   levels: {
@@ -106,9 +115,24 @@ export interface RoadmapPayload {
         title: string;
         items?: RoadmapItem[];
         quick_check?: { question: string; options: { text: string; correct: boolean }[] } | null;
+        quiz?: QuizQuestionPayload[] | null;
       }[];
     }[];
   }[];
+}
+
+/**
+ * The lesson quiz in play order — mirrors the app's rollout fallback: quiz[]
+ * when seeded, else the single quick_check as a one-question quiz.
+ */
+export function lessonQuizOf(
+  lesson: RoadmapPayload["levels"][0]["units"][0]["lessons"][0],
+): QuizQuestionPayload[] {
+  if (lesson.quiz && lesson.quiz.length > 0) {
+    return [...lesson.quiz].sort((a, b) => a.ord - b.ord);
+  }
+  if (!lesson.quick_check) return [];
+  return [{ ord: 1, kind: "vocab", explanation: "", ...lesson.quick_check }];
 }
 
 export function allItems(roadmap: RoadmapPayload): RoadmapItem[] {
