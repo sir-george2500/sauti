@@ -20,9 +20,22 @@ class ToolCall:
 
 
 @dataclass(frozen=True)
+class TokenUsage:
+    """The provider's usage payload for ONE real call — the raw material for
+    sauti.llm_usage metering. cached_prompt_tokens is OpenAI's
+    prompt_tokens_details.cached_tokens (the discounted prefix)."""
+
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    cached_prompt_tokens: int = 0
+
+
+@dataclass(frozen=True)
 class LlmTurn:
     content: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
+    usage: TokenUsage | None = None
 
     def wants_tools(self) -> bool:
         return bool(self.tool_calls)

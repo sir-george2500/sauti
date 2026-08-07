@@ -4,7 +4,7 @@ from __future__ import annotations
 import httpx
 
 from sauti.errors import ApiError
-from sauti.llm.client import LlmClient, LlmTurn, ToolCall, ToolSpec
+from sauti.llm.client import LlmClient, LlmTurn, TokenUsage, ToolCall, ToolSpec
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 
@@ -76,4 +76,13 @@ class OpenAiLlmClient:
             )
             for c in (msg.get("tool_calls") or [])
         ]
-        return LlmTurn(content=msg.get("content"), tool_calls=tool_calls)
+        u = data.get("usage") or {}
+        usage = TokenUsage(
+            model=str(data.get("model") or self._model),
+            prompt_tokens=int(u.get("prompt_tokens") or 0),
+            completion_tokens=int(u.get("completion_tokens") or 0),
+            cached_prompt_tokens=int(
+                (u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+            ),
+        )
+        return LlmTurn(content=msg.get("content"), tool_calls=tool_calls, usage=usage)

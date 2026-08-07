@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import uuid
 
-from sauti.llm.client import LlmTurn, ToolCall, ToolSpec
+from sauti.llm.client import LlmTurn, TokenUsage, ToolCall, ToolSpec
 
 
 def _call(name: str, args: dict) -> ToolCall:
@@ -51,7 +51,15 @@ class FakeLlmClient:
                 "correction_candidates": corrections,
                 "goals_met": goals_met,
             }
-            return LlmTurn(tool_calls=[_call("respond", args)])
+            # Rough deterministic token estimate so metering paths are exercised.
+            prompt_chars = sum(len(str(m.get("content") or "")) for m in messages)
+            usage = TokenUsage(
+                model="fake",
+                prompt_tokens=max(1, prompt_chars // 4),
+                completion_tokens=len(json.dumps(args)) // 4,
+                cached_prompt_tokens=0,
+            )
+            return LlmTurn(tool_calls=[_call("respond", args)], usage=usage)
 
         # Untooled call — plain content (no surface uses this today).
         return LlmTurn(

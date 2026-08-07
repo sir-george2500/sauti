@@ -1,7 +1,7 @@
 from sauti.models.auth import EmailVerificationToken, PasswordResetToken, RefreshToken
 from sauti.models.conversation import Conversation, Message, Scenario
 from sauti.models.curriculum import CanDo, Course, Item, Lesson, Level, Unit, Voice
-from sauti.models.llm import LlmReplyCache
+from sauti.models.llm import LlmReplyCache, LlmUsage
 from sauti.models.speech import TtsCache
 from sauti.models.learner import (
     Attempt,
@@ -24,6 +24,7 @@ __all__ = [
     "Lesson",
     "Level",
     "LlmReplyCache",
+    "LlmUsage",
     "Message",
     "PlacementSession",
     "Profile",

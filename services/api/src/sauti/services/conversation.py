@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from sauti.models import (
     Conversation,
@@ -36,11 +36,12 @@ from sauti.models import (
     Lesson,
     Level,
     LlmReplyCache,
+    LlmUsage,
     Message,
     Scenario,
     Unit,
 )
-from sauti.llm.client import LlmClient, ToolSpec, system, user as user_msg
+from sauti.llm.client import LlmClient, TokenUsage, ToolSpec, system, user as user_msg
 from sauti.services import coach as coach_policy
 from sauti.speech.gateway import SpeechGateway
 
@@ -143,16 +144,53 @@ class ConversationOrchestrator:
     (a connection always opens a fresh conversation) — the remote DB is ~1 s
     per round-trip, so per-turn DB work is a single commit at the end."""
 
-    def __init__(self, db: AsyncSession, llm: LlmClient, speech: SpeechGateway, base_url: str):
+    def __init__(
+        self,
+        db: AsyncSession,
+        llm: LlmClient,
+        speech: SpeechGateway,
+        base_url: str,
+        sessionmaker: async_sessionmaker[AsyncSession] | None = None,
+    ):
         self.db = db
         self.llm = llm
         self.speech = speech
         self.base_url = base_url
+        self._sessionmaker = sessionmaker  # metering writes on its OWN session
+        self._user_id: uuid.UUID | None = None
         self._history: list[dict] = []  # LLM-format user/assistant messages
         self._user_turns = 0
         self._static_prompt: str | None = None  # built once; byte-identical across turns
+        self._bg_tasks: set[asyncio.Task] = set()  # keep fire-and-forget tasks alive
+
+    def _meter(self, usage: TokenUsage | None) -> None:
+        """Persist one llm_usage row per REAL call — fire-and-forget: metering
+        never blocks and never fails the turn."""
+        if usage is None or self._sessionmaker is None:
+            return
+        task = asyncio.create_task(self._write_usage(usage))
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+
+    async def _write_usage(self, usage: TokenUsage) -> None:
+        try:
+            async with self._sessionmaker() as db:
+                db.add(
+                    LlmUsage(
+                        user_id=self._user_id,
+                        surface="conversation",
+                        model=usage.model,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        cached_prompt_tokens=usage.cached_prompt_tokens,
+                    )
+                )
+                await db.commit()
+        except Exception:  # noqa: BLE001 — metering is best-effort by contract
+            pass
 
     async def open(self, user_id: uuid.UUID, scenario: Scenario) -> Conversation:
+        self._user_id = user_id
         conv = Conversation(
             user_id=user_id,
             scenario_id=scenario.id,
@@ -242,6 +280,7 @@ class ConversationOrchestrator:
         turn = await self.llm.complete(
             messages, tools=[RESPOND_TOOL], tool_choice=RESPOND_TOOL.name
         )
+        self._meter(turn.usage)
         raw = turn.tool_calls[0].arguments_json if turn.tool_calls else (turn.content or "")
         try:
             payload = json.loads(raw or "{}")

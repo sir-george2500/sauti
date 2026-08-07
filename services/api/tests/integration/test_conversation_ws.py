@@ -197,6 +197,55 @@ class TestConversationWs:
             assert hits == 1
             assert reply["reply"] == first_partner["text"]
 
+    def test_usage_row_per_real_call_and_none_on_cache_hit(self, app, pg_url):
+        """One sauti.llm_usage row per real LLM call (fire-and-forget); a
+        reply-cache hit writes none."""
+
+        def usage_rows():
+            with psycopg.connect(pg_url) as conn:
+                return conn.execute(
+                    "SELECT surface, model, prompt_tokens, completion_tokens, "
+                    "cached_prompt_tokens FROM sauti.llm_usage"
+                ).fetchall()
+
+        fake = CountingFake()
+        app.state.llm_client = fake
+        with TestClient(app) as tc:
+            token, scenario = _setup(tc)
+            url = f"/api/v1/ws/conversation/{scenario['id']}?token={token}"
+
+            with tc.websocket_connect(url) as ws:
+                _drain_opener(ws, scenario)
+                ws.send_json({"text": "Muraho!"})
+                ws.receive_json()  # partner
+                ws.receive_json()  # coach
+
+            # Metering is fire-and-forget — poll while the app loop is alive.
+            import time
+
+            rows = []
+            for _ in range(50):
+                rows = usage_rows()
+                if rows:
+                    break
+                time.sleep(0.1)
+            assert len(rows) == 1
+            surface, model, prompt_toks, completion_toks, cached_toks = rows[0]
+            assert surface == "conversation"
+            assert model == "fake"
+            assert prompt_toks > 0 and completion_toks > 0
+            assert cached_toks == 0
+
+            # Cache-hit turn: no LLM call, so no new usage row.
+            with tc.websocket_connect(url) as ws:
+                _drain_opener(ws, scenario)
+                ws.send_json({"text": "muraho"})
+                ws.receive_json()
+                ws.receive_json()
+            assert fake.calls == 1
+            time.sleep(0.5)  # would-be metering window
+            assert len(usage_rows()) == 1
+
     def test_scripted_opener_frame_and_persistence(self, app, pg_url):
         """persona.opening_line greets the learner on connect — zero LLM calls."""
         opener = {"ky": "Mwaramutse! Urashaka kugura iki?", "en": "Good morning! What would you like to buy?"}

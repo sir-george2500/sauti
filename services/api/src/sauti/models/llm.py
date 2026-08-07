@@ -1,4 +1,4 @@
-"""LLM cost tables (migration f4a1c9d27e01): synthesize-once reply cache."""
+"""LLM cost tables (migration f4a1c9d27e01): usage metering + reply cache."""
 from __future__ import annotations
 
 import uuid
@@ -8,6 +8,22 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from sauti.db import TimestampedBase
+
+
+class LlmUsage(TimestampedBase):
+    """One row per REAL provider call (cache hits write nothing) — the
+    provider's usage payload, persisted fire-and-forget."""
+
+    __tablename__ = "llm_usage"
+
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    surface: Mapped[str] = mapped_column(Text)  # e.g. "conversation"
+    model: Mapped[str] = mapped_column(Text)
+    prompt_tokens: Mapped[int]
+    completion_tokens: Mapped[int]
+    cached_prompt_tokens: Mapped[int] = mapped_column(default=0)
 
 
 class LlmReplyCache(TimestampedBase):

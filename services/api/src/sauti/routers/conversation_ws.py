@@ -57,6 +57,7 @@ async def conversation_ws(websocket: WebSocket, scenario_id: uuid.UUID) -> None:
             llm=app.state.llm_client,
             speech=app.state.speech_gateway,
             base_url=settings.app_base_url,
+            sessionmaker=maker,  # usage metering writes on its own session
         )
         conv = await orchestrator.open(user_id, scenario)
         # Scripted opener (persona greets first) from persona.opening_line —
