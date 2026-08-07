@@ -97,6 +97,67 @@ class TestVocabDecks:
         assert r.status_code == 404
 
 
+class TestLessonQuiz:
+    """Every KIN lesson carries a real quiz that tests every aspect of the
+    lesson — grammar application, vocabulary, usage in situation, culture."""
+
+    ALLOWED_KINDS = {"grammar", "vocab", "usage", "culture"}
+
+    async def _kin_lessons(self, client):
+        auth = await register_and_login(client)
+        r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+        assert r.status_code == 200
+        return [
+            lesson
+            for lvl in r.json()["levels"]
+            for u in lvl["units"]
+            for lesson in u["lessons"]
+        ]
+
+    async def test_every_kin_lesson_has_a_full_quiz(self, client):
+        lessons = await self._kin_lessons(client)
+        assert len(lessons) == 24
+        for lesson in lessons:
+            quiz = lesson["quiz"]
+            assert 4 <= len(quiz) <= 6, lesson["title"]
+            assert [question["ord"] for question in quiz] == list(range(1, len(quiz) + 1))
+            kinds = {question["kind"] for question in quiz}
+            assert kinds <= self.ALLOWED_KINDS, lesson["title"]
+            assert len(kinds) >= 2, lesson["title"]
+            item_ids = {i["id"] for i in lesson["items"]}
+            for question in quiz:
+                assert question["question"], lesson["title"]
+                assert question["explanation"], lesson["title"]
+                assert len(question["options"]) == 4
+                assert sum(1 for o in question["options"] if o["correct"]) == 1
+                if question["item_id"] is not None:
+                    # Attempts posted against this id must feed a lesson item.
+                    assert question["item_id"] in item_ids, lesson["title"]
+
+    async def test_quiz_covers_culture_where_lesson_has_a_note(self, client):
+        lessons = await self._kin_lessons(client)
+        for lesson in lessons:
+            if lesson["culture_note"]:
+                kinds = {question["kind"] for question in lesson["quiz"]}
+                assert "culture" in kinds, lesson["title"]
+
+    async def test_quick_check_mirrors_first_quiz_question(self, client):
+        lessons = await self._kin_lessons(client)
+        for lesson in lessons:
+            quiz = lesson["quiz"]
+            qc = lesson["quick_check"]
+            assert qc["question"] == quiz[0]["question"], lesson["title"]
+            assert qc["options"] == quiz[0]["options"], lesson["title"]
+
+    async def test_skeleton_courses_keep_derived_quick_check(self, client):
+        auth = await register_and_login(client, email="fra@example.com", course_code="FRA")
+        r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+        assert r.status_code == 200
+        lesson = r.json()["levels"][0]["units"][0]["lessons"][0]
+        assert lesson["quiz"] == []  # no authored quiz for skeletons
+        assert lesson["quick_check"]["question"]  # legacy fallback still works
+
+
 class TestItemAudioUrls:
     """Item payloads carry the cached TTS URL directly — no GET /tts round trip
     before play. Uncached items are null (client falls back to /tts)."""

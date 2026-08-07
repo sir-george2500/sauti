@@ -14,6 +14,7 @@ from sauti.schemas.curriculum import (
     ItemOut,
     QuickCheck,
     QuickCheckOption,
+    QuizQuestion,
     RoadmapCurrent,
     RoadmapEta,
     RoadmapLesson,
@@ -21,13 +22,44 @@ from sauti.schemas.curriculum import (
     RoadmapOut,
     RoadmapUnit,
 )
+from sauti.seed.data_kin import KIN_QUIZZES
 from sauti.services import progress as progress_svc
 from sauti.services.audio import audio_urls_for_items
+
+# Authored quizzes are curriculum content keyed by course code and lesson
+# position — joined to DB lessons here (no schema change, seed-authored).
+COURSE_QUIZZES: dict[str, dict[tuple[str, int, int], list[dict]]] = {"KIN": KIN_QUIZZES}
 
 
 def item_out(item, audio_urls: dict[uuid.UUID, str]) -> ItemOut:
     out = ItemOut.model_validate(item, from_attributes=True)
     out.audio_url = audio_urls.get(item.id)
+    return out
+
+
+def build_quiz(lesson: Lesson, quiz_data: list[dict]) -> list[QuizQuestion]:
+    """Serialize an authored quiz for a DB lesson: resolve item sentences to
+    item ids and shuffle options with a stable per-question hash (so the
+    correct answer isn't always first, but responses stay deterministic)."""
+    id_by_sentence = {i.sentence: i.id for i in lesson.items}
+    out: list[QuizQuestion] = []
+    for ord_, data in enumerate(quiz_data, start=1):
+        options = [
+            QuickCheckOption(text=o["text"], correct=o["correct"]) for o in data["options"]
+        ]
+        options.sort(
+            key=lambda o: hashlib.sha256(f"{lesson.id}|{ord_}|{o.text}".encode()).hexdigest()
+        )
+        out.append(
+            QuizQuestion(
+                ord=ord_,
+                kind=data["kind"],
+                question=data["question"],
+                options=options,
+                explanation=data["explanation"],
+                item_id=id_by_sentence.get(data["item"]) if data.get("item") else None,
+            )
+        )
     return out
 
 
@@ -77,6 +109,7 @@ async def build_roadmap(
     ]
     audio_urls = await audio_urls_for_items(db, all_items)
 
+    quizzes = COURSE_QUIZZES.get(course.code, {})
     out_levels: list[RoadmapLevel] = []
     for level in levels:
         unit_glosses = {u.id: [i.gloss for les in u.lessons for i in les.items] for u in level.units}
@@ -96,6 +129,12 @@ async def build_roadmap(
                     status = "available" if level.ord <= current_level.ord else "locked"
                 else:
                     status = "locked" if _after_current(level, current_level) else "available"
+                quiz = build_quiz(lesson, quizzes.get((level.cefr, unit.ord, lesson.ord), []))
+                if quiz:
+                    # Rollout compat: quick_check mirrors the quiz's first question.
+                    quick_check = QuickCheck(question=quiz[0].question, options=quiz[0].options)
+                else:
+                    quick_check = build_quick_check(lesson, unit_glosses[unit.id])
                 out_lessons.append(
                     RoadmapLesson(
                         id=lesson.id,
@@ -105,7 +144,8 @@ async def build_roadmap(
                         grammar_md=lesson.grammar_md,
                         culture_note=lesson.culture_note,
                         items=[item_out(i, audio_urls) for i in lesson.items],
-                        quick_check=build_quick_check(lesson, unit_glosses[unit.id]),
+                        quick_check=quick_check,
+                        quiz=quiz,
                     )
                 )
             if all(l.status == "done" for l in out_lessons) and out_lessons:

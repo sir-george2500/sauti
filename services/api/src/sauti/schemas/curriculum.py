@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -48,6 +49,21 @@ class QuickCheck(BaseModel):
     options: list[QuickCheckOption]
 
 
+class QuizQuestion(BaseModel):
+    """One question of a lesson's end-of-lesson quiz (4–6 per lesson).
+
+    The frontend posts one attempt per question (mode "read", score 1/0)
+    against item_id — or the lesson's first item when item_id is null.
+    """
+
+    ord: int  # 1-based
+    kind: Literal["grammar", "vocab", "usage", "culture"]
+    question: str
+    options: list[QuickCheckOption]
+    explanation: str  # one sentence: WHY the correct answer is right
+    item_id: uuid.UUID | None = None
+
+
 class RoadmapLesson(BaseModel):
     id: uuid.UUID
     title: str
@@ -56,7 +72,9 @@ class RoadmapLesson(BaseModel):
     grammar_md: str | None = None
     culture_note: str | None = None
     items: list[ItemOut] = []
+    # Legacy single MCQ — populated from quiz[0] during rollout.
     quick_check: QuickCheck | None = None
+    quiz: list[QuizQuestion] = []
 
 
 class RoadmapUnit(BaseModel):
