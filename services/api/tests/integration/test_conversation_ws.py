@@ -91,6 +91,45 @@ class TestConversationWs:
             except Exception:
                 pass  # some client versions raise on close during handshake — fine
 
+    def test_system_prompt_prefix_stable_across_turns(self, app):
+        """The whole prompt prefix (system message + growing history) must be
+        byte-identical across turns for OpenAI's prompt-cache discount."""
+        from sauti.llm.fake import FakeLlmClient
+
+        class RecordingFake(FakeLlmClient):
+            def __init__(self):
+                self.prompts: list[list[dict]] = []
+
+            async def complete(self, messages, tools=None, tool_choice=None):
+                self.prompts.append([dict(m) for m in messages])
+                return await super().complete(messages, tools, tool_choice)
+
+        fake = RecordingFake()
+        app.state.llm_client = fake
+        with TestClient(app) as tc:
+            token, scenario_id = _setup(tc)
+            with tc.websocket_connect(
+                f"/api/v1/ws/conversation/{scenario_id}?token={token}"
+            ) as ws:
+                ws.send_json({"text": "Muraho!"})
+                for _ in range(2):  # partner + coach praise
+                    ws.receive_json()
+                ws.send_json({"text": "Ni angahe?"})
+                for _ in range(4):  # partner + goal + praise + fix
+                    ws.receive_json()
+
+        assert len(fake.prompts) == 2  # ONE call per turn
+        first, second = fake.prompts
+        # System prompt: static content only, byte-identical across turns.
+        assert first[0]["role"] == "system"
+        assert first[0] == second[0]
+        # Turn 2's messages extend turn 1's verbatim (append-only prefix):
+        # [system, u1] then [system, u1, a1, u2].
+        assert second[0] == first[0]
+        assert second[1] == first[1]
+        assert [m["role"] for m in second] == ["system", "user", "assistant", "user"]
+        assert second[-1]["content"] == "Ni angahe?"
+
     def test_conversation_and_messages_persisted(self, app, pg_url):
         with TestClient(app) as tc:
             token, scenario_id = _setup(tc)
