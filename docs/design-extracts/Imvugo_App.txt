@@ -1,0 +1,190 @@
+
+imvugo
+Speak it as it's spoken
+Ikinyarwanda
+A2
+Unit 3 · Market & money
+Kiswahili
++
+Français
++
+{{ sec.label }}
+{{ it.label }}
+{{ it.badge }}
+12-day rhythm
+BEST 15
+A
+Ange
+Day 34 · 34 h total
+Wednesday · August 6
+Mwaramutse, Ange.
+Your 25-minute session is ready — three short blocks, then you're done.
+Start session
+{{ b.tag }}
+{{ b.mins }}
+{{ b.title }}
+{{ b.sub }}
+Where you are
+{{ s.label }}
+A2 · Unit 3 — Market & money
+At {{ paceLabel }} a week you reach conversational (B1) by 
+{{ eta }}
+.
+Consistency
+12 of the last 14 days
+Rhythm beats streaks — one rest day never resets you.
+{{ potdGlyph }}
+Buhoro buhoro ni rwo rugendo.
+“Slowly, slowly — that is the journey.” · proverb of the day
+● DIANE
+KIGALI VOICE
+Ikinyarwanda · Roadmap
+From first greeting to full fluency.
+Six CEFR stages, each closed by a real speaking check. Not sure where you stand? 
+Take the placement.
+{{ lv.code }}
+{{ lv.name }}
+{{ lv.desc }}
+{{ lv.meta }}
+{{ u.n }}
+{{ u.name }}
+{{ u.mark }}
+A2 · Unit 3 · Lesson 2 of 5
+Noun classes: talking about people
+Kinyarwanda nouns live in families. Learn the umu-/aba- family and plurals stop being guesswork.
+Every Kinyarwanda noun belongs to a class, and the class is carried by a prefix. The people class pairs 
+umu-
+ (one person) with 
+aba-
+ (several). Swap the prefix, keep the stem — the rest of the sentence agrees with it.
+SINGULAR
+PLURAL
+MEANING
+umu
+{{ r.stem }}
+aba
+{{ r.stem }}
+{{ r.en }}
+Hear it used
+{{ ex.glyph }}
+{{ ex.ky }}
+{{ ex.en }}
+{{ ex.voice }}
+UMUCO · CULTURE
+Respect lives in the grammar: Rwandans often address one elder with plural forms — grammatically “you all”, socially “you, with respect.” Listen for it when younger vendors serve older customers.
+Quick check
+One child is 
+umwana
+. Several children are…
+{{ o.t }}
+{{ o.mark }}
+{{ lessonFb }}
+← Back to roadmap
+Practice these words →
+Practice · Conversation
+Kimironko market run
+Buy vegetables for tonight. Greet first, ask prices, bargain politely, close warmly.
+M
+Mukamana · vegetable vendor
+Speaks at real market speed — and repeats kindly when you ask
+● LIVE VOICE
+KIGALI
+Umuco:
+ greet before business — price talk before “Muraho” reads as rude.
+{{ m.ky }}
+{{ m.en }}
+COACH · {{ m.coachTitle }}
+{{ m.coachBody }}
+Stuck? Try:
+{{ h.t }}
+Send
+Or hold the mic and answer out loud — Mukamana hears your accent, not a transcript.
+Practice · Pronunciation
+Say it like Kigali says it.
+Target phrase
+Amakuru yawe?
+{{ s.t }}
+{{ s.note }}
+{{ pronNativeGlyph }}
+DIANE · NATIVE
+{{ pronMineGlyph }}
+YOU · TAKE 2
+86
+CLEAR
+What to fix
+ku
+Carries the high tone — let it rise: ama
+KU
+ru. Flat tone is the #1 foreign tell.
+ru
+Good tap! Kinyarwanda r is a light [ɾ] — like the tt in “butter”, never the English r.
+● Record take 3
+Listen slowed down
+Practice · Listening
+At the moto stage
+Two native voices, one quick negotiation. Listen once before opening the transcript.
+{{ listenGlyph }}
+0:42
+{{ sp.t }}
+● EMMANUEL & DIANE · KIGALI
+Comprehension
+Where is Eric asking the moto to take him?
+{{ o.t }}
+{{ o.mark }}
+{{ listenFb }}
+Transcript
+{{ transcriptLabel }}
+{{ l.who }}
+{{ l.ky }}
+{{ l.en }}
+Learn · Vocabulary
+Words where you'll use them.
+Organized by situation, not alphabet — every word arrives inside a sentence you'd actually say.
+Review 8 due · 5 min
+{{ d.ky }}
+{{ d.pct }}
+{{ d.en }} · {{ d.count }} words
+{{ d.sampleKy }}
+ — {{ d.sampleEn }}
+Track · Progress
+Your road to B1.
+Measured against CEFR can-do standards — not points. A2, 41% through, on pace for 
+{{ eta }}
+.
+{{ s.label }}
+{{ s.tag }}
+Skill balance
+{{ s.name }}
+{{ s.cefr }}
+Writing lags speaking — tomorrow's session adds a short journal prompt.
+A2 can-do statements
+{{ cd.mark }}
+{{ cd.text }}
+18 of 31 confirmed in live speaking checks
+Hear yourself change
+{{ w1Glyph }}
+Week 1 · “Muraho…”
+{{ nowGlyph }}
+Day 34 · market run
+Same phrase, 33 days apart. This is why you keep the recordings.
+Total time
+34 h
+Weekly average
+4.8 h
+Sentences spoken
+214
+Start here · Placement
+Find your true starting point.
+The test adapts as you answer — get one right and it pushes harder, miss and it eases off. It ends by listening to you speak, because reading level and speaking level are rarely the same.
+12–18 questions
+~15 minutes
+Includes speaking
+Sample · Question 3 of 12
+Someone greets you: 
+“Amakuru?”
+ — choose the natural reply.
+{{ o.t }}
+{{ o.mark }}
+{{ placeFb }}
+Begin placement
+I'm brand new — start at A1

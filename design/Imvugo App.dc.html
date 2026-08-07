@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3EDE0;font-family:'Instrument Sans',system-ui,sans-serif;color:#241C12;-webkit-font-smoothing:antialiased}
+a{color:#B4470B;text-decoration:none}a:hover{color:#8F3708}
+button{font-family:'Instrument Sans',system-ui,sans-serif}
+input{font-family:'Instrument Sans',system-ui,sans-serif}
+::placeholder{color:#A2937E}
+@keyframes imvpulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;overflow:hidden;background:#F3EDE0">
+<aside style="width:252px;flex:none;background:#221A10;color:#F3EDE0;display:flex;flex-direction:column;overflow-y:auto">
+  <div style="padding:26px 26px 18px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <svg width="24" height="13" viewBox="0 0 24 13"><path d="M0 13 L6 0 L12 13 Z" fill="#C2551A"></path><path d="M12 13 L18 0 L24 13 Z" fill="#D99A2B"></path></svg>
+      <span style="font-family:'Source Serif 4',serif;font-size:23px;font-weight:700;letter-spacing:-.01em">imvugo</span>
+    </div>
+    <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#8A7D66;margin:8px 0 0">Speak it as it's spoken</div>
+  </div>
+  <div style="margin:0 20px 20px;background:#2C2416;border:1px solid #3B3120;border-radius:12px;padding:14px 16px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#F0C9A6">Ikinyarwanda</span>
+      <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#D99A2B">A2</span>
+    </div>
+    <div style="font-size:12px;color:#B3A58C;margin:5px 0 0">Unit 3 · Market &amp; money</div>
+    <div style="height:1px;background:#3B3120;margin:12px 0 10px"></div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#8A7D66;cursor:pointer" style-hover="color:#C9BCA7"><span>Kiswahili</span><span>+</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:#8A7D66;cursor:pointer" style-hover="color:#C9BCA7"><span>Français</span><span>+</span></div>
+    </div>
+  </div>
+  <nav style="flex:1;padding:0 14px">
+    <sc-for list="{{ navSections }}" as="sec" hint-placeholder-count="3">
+      <div style="margin:0 0 16px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#6E624C;padding:0 12px;margin:0 0 6px">{{ sec.label }}</div>
+        <sc-for list="{{ sec.items }}" as="it" hint-placeholder-count="3">
+          <div onClick="{{ it.go }}" style="{{ it.style }}" style-hover="background:rgba(243,237,224,.07)">
+            <span style="width:7px;height:7px;border-radius:2px;background:{{ it.dot }};flex:none"></span>
+            <span>{{ it.label }}</span>
+            <span style="margin-left:auto;font-family:'Spline Sans Mono',monospace;font-size:10px;color:#D99A2B">{{ it.badge }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </nav>
+  <div style="padding:18px 20px 22px;border-top:1px solid #3B3120">
+    <sc-if value="{{ showRhythm }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:8px;background:#3A2B12;border:1px solid #55401B;border-radius:999px;padding:7px 12px;margin:0 0 12px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#D99A2B;animation:imvpulse 2.4s infinite"></span>
+        <span style="font-size:12px;font-weight:600;color:#EFC98F">12-day rhythm</span>
+        <span style="margin-left:auto;font-family:'Spline Sans Mono',monospace;font-size:10px;color:#8A7D66">BEST 15</span>
+      </div>
+    </sc-if>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:32px;height:32px;border-radius:50%;background:#2F6B4F;color:#F3EDE0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none">A</div>
+      <div>
+        <div style="font-size:13px;font-weight:600">Ange</div>
+        <div style="font-size:11px;color:#8A7D66">Day 34 · 34 h total</div>
+      </div>
+    </div>
+  </div>
+</aside>
+<main id="imv-main" style="flex:1;overflow-y:auto">
+<div style="max-width:940px;margin:0 auto;padding:46px 48px 90px">
+
+<sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Today dashboard">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:0 0 30px">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Wednesday · August 6</div>
+      <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Mwaramutse, Ange.</h1>
+      <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Your 25-minute session is ready — three short blocks, then you're done.</p>
+    </div>
+    <button onClick="{{ goLesson }}" style="background:#B4470B;color:#FBF5EA;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;flex:none" style-hover="background:#93390A">Start session</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:0 0 16px">
+    <sc-for list="{{ sessionBlocks }}" as="b" hint-placeholder-count="3">
+      <div onClick="{{ b.go }}" style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:18px;cursor:pointer" style-hover="border-color:#B4470B">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.13em;background:{{ b.tagBg }};color:{{ b.tagFg }};border-radius:5px;padding:4px 7px">{{ b.tag }}</span>
+          <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">{{ b.mins }}</span>
+        </div>
+        <div style="font-size:15px;font-weight:600;line-height:1.3">{{ b.title }}</div>
+        <div style="font-size:12.5px;color:#75695A;margin:5px 0 0;text-wrap:pretty">{{ b.sub }}</div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px;margin:0 0 16px">
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 14px">Where you are</div>
+      <div style="display:flex;gap:5px;margin:0 0 14px">
+        <sc-for list="{{ cefrSegs }}" as="s" hint-placeholder-count="6">
+          <div style="flex:1">
+            <div style="height:8px;border-radius:4px;background:#EDE4D2;overflow:hidden"><div style="height:100%;width:{{ s.fill }};background:{{ s.color }}"></div></div>
+            <div style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:{{ s.lc }};margin:5px 0 0">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600">A2 · Unit 3 — Market &amp; money</div>
+      <div style="font-size:13px;color:#75695A;margin:6px 0 0;text-wrap:pretty">At {{ paceLabel }} a week you reach conversational (B1) by <span style="color:#2F6B4F;font-weight:600">{{ eta }}</span>.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 14px">Consistency</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 0 12px">
+        <sc-for list="{{ days }}" as="d" hint-placeholder-count="14">
+          <div style="height:22px;border-radius:6px;background:{{ d.bg }};border:{{ d.border }};box-sizing:border-box"></div>
+        </sc-for>
+      </div>
+      <div style="font-size:13px;color:#75695A">12 of the last 14 days</div>
+      <sc-if value="{{ showRhythm }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:12px;color:#9A6A14;background:#F6ECD8;border-radius:8px;padding:8px 10px;margin:10px 0 0;text-wrap:pretty">Rhythm beats streaks — one rest day never resets you.</div>
+      </sc-if>
+    </div>
+  </div>
+  <div style="background:#221A10;color:#F3EDE0;border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:18px">
+    <button onClick="{{ potdPlay }}" style="width:44px;height:44px;border-radius:50%;border:1.5px solid #D99A2B;background:{{ potdBg }};color:{{ potdFg }};font-size:12px;cursor:pointer;flex:none">{{ potdGlyph }}</button>
+    <div style="flex:1">
+      <div style="font-family:'Source Serif 4',serif;font-size:21px;font-style:italic">Buhoro buhoro ni rwo rugendo.</div>
+      <div style="font-size:13px;color:#B3A58C;margin:4px 0 0">“Slowly, slowly — that is the journey.” · proverb of the day</div>
+    </div>
+    <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#D99A2B;text-align:right;flex:none;line-height:1.6">● DIANE<br>KIGALI VOICE</div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isRoadmap }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="CEFR roadmap">
+  <div style="margin:0 0 28px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Ikinyarwanda · Roadmap</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">From first greeting to full fluency.</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Six CEFR stages, each closed by a real speaking check. Not sure where you stand? <span onClick="{{ goPlace }}" style="color:#B4470B;font-weight:600;cursor:pointer">Take the placement.</span></p>
+  </div>
+  <sc-for list="{{ levels }}" as="lv" hint-placeholder-count="6">
+    <div style="background:#FFFDF6;border:1px solid {{ lv.border }};border-radius:14px;padding:20px 22px;margin:0 0 12px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:44px;height:44px;border-radius:10px;background:{{ lv.bBg }};color:{{ lv.bFg }};display:flex;align-items:center;justify-content:center;font-family:'Spline Sans Mono',monospace;font-weight:600;font-size:15px;flex:none">{{ lv.code }}</div>
+        <div style="flex:1">
+          <div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600">{{ lv.name }}</div>
+          <div style="font-size:13px;color:#75695A;margin:2px 0 0;text-wrap:pretty">{{ lv.desc }}</div>
+        </div>
+        <div style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:{{ lv.metaC }};flex:none">{{ lv.meta }}</div>
+      </div>
+      <sc-for list="{{ lv.units }}" as="u" hint-placeholder-count="0">
+        <div style="{{ u.style }}">
+          <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A;width:22px;flex:none">{{ u.n }}</span>
+          <span style="font-size:14px;font-weight:{{ u.w }};flex:1">{{ u.name }}</span>
+          <span style="font-size:12px;font-weight:600;color:{{ u.mc }}">{{ u.mark }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLesson }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Lesson player">
+  <div style="margin:0 0 26px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">A2 · Unit 3 · Lesson 2 of 5</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Noun classes: talking about people</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Kinyarwanda nouns live in families. Learn the umu-/aba- family and plurals stop being guesswork.</p>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:24px;margin:0 0 14px">
+    <p style="font-family:'Source Serif 4',serif;font-size:16.5px;line-height:1.7;margin:0;text-wrap:pretty">Every Kinyarwanda noun belongs to a class, and the class is carried by a prefix. The people class pairs <strong style="color:#B4470B">umu-</strong> (one person) with <strong style="color:#B4470B">aba-</strong> (several). Swap the prefix, keep the stem — the rest of the sentence agrees with it.</p>
+    <div style="border:1px solid #E7DECC;border-radius:10px;overflow:hidden;margin:18px 0 0">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;background:#F6F0E2;padding:9px 16px;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#75695A">
+        <span>SINGULAR</span><span>PLURAL</span><span>MEANING</span>
+      </div>
+      <sc-for list="{{ nounRows }}" as="r" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;padding:11px 16px;border-top:1px solid #F0E8D8;font-family:'Source Serif 4',serif;font-size:16px;align-items:baseline">
+          <span><span style="color:#B4470B;font-weight:600">umu</span><span>{{ r.stem }}</span></span>
+          <span><span style="color:#2F6B4F;font-weight:600">aba</span><span>{{ r.stem }}</span></span>
+          <span style="font-family:'Instrument Sans',sans-serif;font-size:13px;color:#75695A">{{ r.en }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px;margin:0 0 14px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 16px">Hear it used</div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <sc-for list="{{ lessonExamples }}" as="ex" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:14px">
+          <button onClick="{{ ex.play }}" style="width:36px;height:36px;border-radius:50%;border:1.5px solid #B4470B;background:{{ ex.btnBg }};color:{{ ex.btnFg }};font-size:10px;cursor:pointer;flex:none">{{ ex.glyph }}</button>
+          <div style="flex:1">
+            <div style="font-family:'Source Serif 4',serif;font-size:18px">{{ ex.ky }}</div>
+            <div style="font-size:12.5px;color:#75695A;margin:2px 0 0">{{ ex.en }}</div>
+          </div>
+          <div style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#A2937E;flex:none">{{ ex.voice }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <sc-if value="{{ showCulture }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:14px;padding:18px 22px;margin:0 0 14px">
+      <div style="font-size:10.5px;font-weight:700;letter-spacing:.13em;color:#9A6A14;margin:0 0 6px">UMUCO · CULTURE</div>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:#5C4A22;text-wrap:pretty">Respect lives in the grammar: Rwandans often address one elder with plural forms — grammatically “you all”, socially “you, with respect.” Listen for it when younger vendors serve older customers.</p>
+    </div>
+  </sc-if>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px;margin:0 0 20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 6px">Quick check</div>
+    <div style="font-family:'Source Serif 4',serif;font-size:18px;margin:0 0 14px">One child is <em>umwana</em>. Several children are…</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ lessonOpts }}" as="o" hint-placeholder-count="3">
+        <div onClick="{{ o.pick }}" style="{{ o.style }}">
+          <span style="font-family:'Source Serif 4',serif;font-size:16px;flex:1">{{ o.t }}</span>
+          <span style="font-size:13px;font-weight:700;color:{{ o.mc }}">{{ o.mark }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ lessonFb }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:13.5px;font-weight:600;color:{{ lessonFbC }};margin:12px 0 0">{{ lessonFb }}</div>
+    </sc-if>
+  </div>
+  <div style="display:flex;justify-content:space-between;gap:12px">
+    <button onClick="{{ goRoadmap }}" style="background:none;border:1px solid #D8CDB6;color:#75695A;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:#B4470B;color:#B4470B">← Back to roadmap</button>
+    <button onClick="{{ goVocab }}" style="background:#B4470B;color:#FBF5EA;border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:#93390A">Practice these words →</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isConvo }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="AI conversation">
+  <div style="margin:0 0 22px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Practice · Conversation</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Kimironko market run</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Buy vegetables for tonight. Greet first, ask prices, bargain politely, close warmly.</p>
+  </div>
+  <div style="display:flex;gap:14px;align-items:center;background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:16px 18px;margin:0 0 12px">
+    <div style="width:44px;height:44px;border-radius:50%;background:#B4470B;color:#FBF5EA;font-weight:700;font-family:'Source Serif 4',serif;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none">M</div>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:600">Mukamana · vegetable vendor</div>
+      <div style="font-size:12.5px;color:#75695A">Speaks at real market speed — and repeats kindly when you ask</div>
+    </div>
+    <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#2F6B4F;flex:none;text-align:right;line-height:1.6">● LIVE VOICE<br>KIGALI</div>
+  </div>
+  <sc-if value="{{ showCulture }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:10px;padding:10px 16px;margin:0 0 12px;font-size:13px;color:#5C4A22"><strong style="color:#9A6A14">Umuco:</strong> greet before business — price talk before “Muraho” reads as rude.</div>
+  </sc-if>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px;margin:0 0 12px;display:flex;flex-direction:column;gap:14px">
+    <sc-for list="{{ messages }}" as="m" hint-placeholder-count="3">
+      <div style="{{ m.wrap }}">
+        <div style="{{ m.bubble }}">
+          <div style="font-family:'Source Serif 4',serif;font-size:16.5px;line-height:1.45">{{ m.ky }}</div>
+          <sc-if value="{{ m.en }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:{{ m.glossC }};margin:5px 0 0">{{ m.en }}</div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ m.hasCoach }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:78%;background:#E4EEE7;border:1px solid #BFD5C6;border-radius:12px;padding:12px 14px;margin:8px 0 0">
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:.12em;color:#2F6B4F;margin:0 0 5px">COACH · {{ m.coachTitle }}</div>
+            <div style="font-size:13px;line-height:1.55;color:#31462F;text-wrap:pretty">{{ m.coachBody }}</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap">
+    <span style="font-size:12px;color:#75695A">Stuck? Try:</span>
+    <sc-for list="{{ hints }}" as="h" hint-placeholder-count="3">
+      <button onClick="{{ h.use }}" style="background:#F6F0E2;border:1px solid #E7DECC;border-radius:999px;padding:6px 12px;font-size:13px;font-family:'Source Serif 4',serif;cursor:pointer;color:#241C12" style-hover="border-color:#B4470B;color:#B4470B">{{ h.t }}</button>
+    </sc-for>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <button style="width:44px;height:44px;border-radius:50%;border:1.5px solid #B4470B;background:#F8E7DB;cursor:pointer;flex:none" style-hover="background:#F3D9C6"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#B4470B"></span></button>
+    <input value="{{ convoInput }}" onChange="{{ onConvoInput }}" onKeyDown="{{ onConvoKey }}" placeholder="Andika mu Kinyarwanda… (type in Kinyarwanda)" style="flex:1;background:#FFFDF6;border:1px solid #D8CDB6;border-radius:10px;padding:12px 16px;font-size:15px;outline:none;color:#241C12">
+    <button onClick="{{ onSend }}" style="background:#B4470B;color:#FBF5EA;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:#93390A">Send</button>
+  </div>
+  <div style="font-size:12px;color:#A2937E;margin:8px 0 0 54px">Or hold the mic and answer out loud — Mukamana hears your accent, not a transcript.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPron }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Pronunciation feedback">
+  <div style="margin:0 0 26px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Practice · Pronunciation</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Say it like Kigali says it.</h1>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:24px;margin:0 0 14px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 12px">Target phrase</div>
+    <div style="font-family:'Source Serif 4',serif;font-size:30px;font-weight:600;margin:0 0 16px">Amakuru yawe?</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <sc-for list="{{ sylls }}" as="s" hint-placeholder-count="6">
+        <div style="text-align:center">
+          <div style="font-family:'Spline Sans Mono',monospace;font-size:15px;background:{{ s.bg }};color:{{ s.c }};border-radius:8px;padding:8px 13px">{{ s.t }}</div>
+          <div style="font-size:10px;color:{{ s.nc }};margin:4px 0 0;font-weight:600">{{ s.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:24px;margin:0 0 14px;display:flex;gap:24px;align-items:center">
+    <div style="flex:1;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onClick="{{ pronNativePlay }}" style="width:34px;height:34px;border-radius:50%;border:1.5px solid #B4470B;background:{{ pronNativeBg }};color:{{ pronNativeFg }};font-size:9px;cursor:pointer;flex:none">{{ pronNativeGlyph }}</button>
+        <div style="display:flex;align-items:flex-end;gap:2px;height:34px;flex:1">
+          <sc-for list="{{ nativeBars }}" as="b" hint-placeholder-count="16">
+            <div style="width:4px;border-radius:2px;background:#B4470B;height:{{ b.h }}px"></div>
+          </sc-for>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#75695A;flex:none">DIANE · NATIVE</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button onClick="{{ pronMinePlay }}" style="width:34px;height:34px;border-radius:50%;border:1.5px solid #75695A;background:{{ pronMineBg }};color:{{ pronMineFg }};font-size:9px;cursor:pointer;flex:none">{{ pronMineGlyph }}</button>
+        <div style="display:flex;align-items:flex-end;gap:2px;height:34px;flex:1">
+          <sc-for list="{{ userBars }}" as="b" hint-placeholder-count="16">
+            <div style="width:4px;border-radius:2px;background:{{ b.c }};height:{{ b.h }}px"></div>
+          </sc-for>
+        </div>
+        <span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#75695A;flex:none">YOU · TAKE 2</span>
+      </div>
+    </div>
+    <div style="flex:none;text-align:center">
+      <div style="width:74px;height:74px;border-radius:50%;border:3px solid #2F6B4F;display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-size:26px;font-weight:700;color:#2F6B4F;margin:0 auto">86</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;color:#2F6B4F;margin:8px 0 0">CLEAR</div>
+    </div>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 24px;margin:0 0 20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 12px">What to fix</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#C98A1B;flex:none">ku</span><span style="font-size:14px;line-height:1.55;text-wrap:pretty">Carries the high tone — let it rise: ama<strong>KU</strong>ru. Flat tone is the #1 foreign tell.</span></div>
+      <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#2F6B4F;flex:none">ru</span><span style="font-size:14px;line-height:1.55;text-wrap:pretty">Good tap! Kinyarwanda r is a light [ɾ] — like the tt in “butter”, never the English r.</span></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button style="background:#B4470B;color:#FBF5EA;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer" style-hover="background:#93390A">● Record take 3</button>
+    <button style="background:none;border:1px solid #D8CDB6;color:#75695A;border-radius:10px;padding:12px 18px;font-size:14px;font-weight:600;cursor:pointer" style-hover="border-color:#B4470B;color:#B4470B">Listen slowed down</button>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isListen }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Listening exercise">
+  <div style="margin:0 0 26px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Practice · Listening</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">At the moto stage</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Two native voices, one quick negotiation. Listen once before opening the transcript.</p>
+  </div>
+  <div style="background:#221A10;color:#F3EDE0;border-radius:14px;padding:24px;margin:0 0 14px">
+    <div style="display:flex;align-items:center;gap:16px">
+      <button onClick="{{ listenPlay }}" style="width:52px;height:52px;border-radius:50%;border:1.5px solid #D99A2B;background:{{ listenBg }};color:{{ listenFg }};font-size:14px;cursor:pointer;flex:none">{{ listenGlyph }}</button>
+      <div style="display:flex;align-items:flex-end;gap:2px;height:40px;flex:1">
+        <sc-for list="{{ listenBars }}" as="b" hint-placeholder-count="30">
+          <div style="width:4px;border-radius:2px;background:{{ b.c }};height:{{ b.h }}px"></div>
+        </sc-for>
+      </div>
+      <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#B3A58C;flex:none">0:42</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:16px 0 0">
+      <sc-for list="{{ speeds }}" as="sp" hint-placeholder-count="2">
+        <button onClick="{{ sp.pick }}" style="{{ sp.style }}">{{ sp.t }}</button>
+      </sc-for>
+      <span style="margin-left:auto;font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#D99A2B">● EMMANUEL &amp; DIANE · KIGALI</span>
+    </div>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px;margin:0 0 14px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 6px">Comprehension</div>
+    <div style="font-family:'Source Serif 4',serif;font-size:18px;margin:0 0 14px">Where is Eric asking the moto to take him?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ listenOpts }}" as="o" hint-placeholder-count="3">
+        <div onClick="{{ o.pick }}" style="{{ o.style }}">
+          <span style="font-family:'Source Serif 4',serif;font-size:16px;flex:1">{{ o.t }}</span>
+          <span style="font-size:13px;font-weight:700;color:{{ o.mc }}">{{ o.mark }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ listenFb }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:13.5px;font-weight:600;color:{{ listenFbC }};margin:12px 0 0">{{ listenFb }}</div>
+    </sc-if>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A">Transcript</div>
+      <button onClick="{{ toggleTranscript }}" style="background:none;border:1px solid #D8CDB6;color:#75695A;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="border-color:#B4470B;color:#B4470B">{{ transcriptLabel }}</button>
+    </div>
+    <sc-if value="{{ transcriptOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:14px;margin:18px 0 0">
+        <sc-for list="{{ transcript }}" as="l" hint-placeholder-count="4">
+          <div style="display:flex;gap:14px;align-items:baseline">
+            <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:{{ l.wc }};flex:none;width:74px">{{ l.who }}</span>
+            <div>
+              <div style="font-family:'Source Serif 4',serif;font-size:16.5px">{{ l.ky }}</div>
+              <div style="font-size:12.5px;color:#75695A;margin:2px 0 0">{{ l.en }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isVocab }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Vocabulary by situation">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin:0 0 26px">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Learn · Vocabulary</div>
+      <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Words where you'll use them.</h1>
+      <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Organized by situation, not alphabet — every word arrives inside a sentence you'd actually say.</p>
+    </div>
+    <button style="background:#2F6B4F;color:#FBF5EA;border:none;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;flex:none" style-hover="background:#265640">Review 8 due · 5 min</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <sc-for list="{{ decks }}" as="d" hint-placeholder-count="6">
+      <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px;cursor:pointer" style-hover="border-color:#B4470B">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 2px">
+          <span style="font-family:'Source Serif 4',serif;font-size:19px;font-weight:600">{{ d.ky }}</span>
+          <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:{{ d.pc }}">{{ d.pct }}</span>
+        </div>
+        <div style="font-size:13px;color:#75695A;margin:0 0 14px">{{ d.en }} · {{ d.count }} words</div>
+        <div style="height:6px;border-radius:3px;background:#EDE4D2;overflow:hidden;margin:0 0 12px"><div style="height:100%;width:{{ d.pct }};background:{{ d.bar }}"></div></div>
+        <div style="font-size:13px;color:#75695A"><span style="font-family:'Source Serif 4',serif;font-style:italic;color:#241C12">{{ d.sampleKy }}</span> — {{ d.sampleEn }}</div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Progress and stats">
+  <div style="margin:0 0 26px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Track · Progress</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Your road to B1.</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;text-wrap:pretty">Measured against CEFR can-do standards — not points. A2, 41% through, on pace for <span style="color:#2F6B4F;font-weight:600">{{ eta }}</span>.</p>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px;margin:0 0 14px">
+    <div style="display:flex;gap:6px">
+      <sc-for list="{{ cefrSegs }}" as="s" hint-placeholder-count="6">
+        <div style="flex:1">
+          <div style="height:12px;border-radius:6px;background:#EDE4D2;overflow:hidden"><div style="height:100%;width:{{ s.fill }};background:{{ s.color }}"></div></div>
+          <div style="display:flex;justify-content:space-between;margin:6px 0 0"><span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:{{ s.lc }};font-weight:600">{{ s.label }}</span><span style="font-size:10.5px;color:#A2937E">{{ s.tag }}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 14px">
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 16px">Skill balance</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <sc-for list="{{ skills }}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:13px;font-weight:600;width:76px;flex:none">{{ s.name }}</span>
+            <div style="flex:1;height:7px;border-radius:4px;background:#EDE4D2;overflow:hidden"><div style="height:100%;width:{{ s.w }};background:{{ s.c }}"></div></div>
+            <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#75695A;width:26px;text-align:right;flex:none">{{ s.cefr }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:12.5px;color:#75695A;margin:16px 0 0;text-wrap:pretty">Writing lags speaking — tomorrow's session adds a short journal prompt.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 16px">A2 can-do statements</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ candos }}" as="cd" hint-placeholder-count="5">
+          <div style="display:flex;gap:10px;align-items:baseline">
+            <span style="font-size:12px;font-weight:700;color:{{ cd.mc }};flex:none;width:14px">{{ cd.mark }}</span>
+            <span style="font-size:13.5px;line-height:1.5;color:{{ cd.tc }};text-wrap:pretty">{{ cd.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:12.5px;color:#75695A;margin:16px 0 0">18 of 31 confirmed in live speaking checks</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">
+    <div style="background:#221A10;color:#F3EDE0;border-radius:14px;padding:20px 22px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#8A7D66;margin:0 0 12px">Hear yourself change</div>
+      <div style="display:flex;gap:10px;margin:0 0 12px">
+        <button onClick="{{ w1Play }}" style="flex:1;display:flex;align-items:center;gap:10px;background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:12px 14px;color:#F3EDE0;font-size:13px;cursor:pointer;text-align:left" style-hover="border-color:#D99A2B"><span style="color:#D99A2B;font-size:10px">{{ w1Glyph }}</span><span>Week 1 · “Muraho…”</span></button>
+        <button onClick="{{ nowPlay }}" style="flex:1;display:flex;align-items:center;gap:10px;background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:12px 14px;color:#F3EDE0;font-size:13px;cursor:pointer;text-align:left" style-hover="border-color:#D99A2B"><span style="color:#D99A2B;font-size:10px">{{ nowGlyph }}</span><span>Day 34 · market run</span></button>
+      </div>
+      <div style="font-size:12.5px;color:#B3A58C;text-wrap:pretty">Same phrase, 33 days apart. This is why you keep the recordings.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;justify-content:center;gap:12px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:#75695A">Total time</span><span style="font-family:'Spline Sans Mono',monospace;font-size:15px;font-weight:600">34 h</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:#75695A">Weekly average</span><span style="font-family:'Spline Sans Mono',monospace;font-size:15px;font-weight:600">4.8 h</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:#75695A">Sentences spoken</span><span style="font-family:'Spline Sans Mono',monospace;font-size:15px;font-weight:600">214</span></div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPlace }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Placement test">
+  <div style="margin:0 0 26px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 10px">Start here · Placement</div>
+    <h1 style="font-family:'Source Serif 4',serif;font-size:34px;font-weight:600;margin:0;letter-spacing:-.01em">Find your true starting point.</h1>
+    <p style="margin:8px 0 0;color:#75695A;font-size:15px;max-width:560px;text-wrap:pretty">The test adapts as you answer — get one right and it pushes harder, miss and it eases off. It ends by listening to you speak, because reading level and speaking level are rarely the same.</p>
+  </div>
+  <div style="display:flex;gap:10px;margin:0 0 20px">
+    <span style="background:#F6F0E2;border:1px solid #E7DECC;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;color:#75695A">12–18 questions</span>
+    <span style="background:#F6F0E2;border:1px solid #E7DECC;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;color:#75695A">~15 minutes</span>
+    <span style="background:#E4EEE7;border:1px solid #BFD5C6;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;color:#2F6B4F">Includes speaking</span>
+  </div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px;margin:0 0 20px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#75695A;margin:0 0 6px">Sample · Question 3 of 12</div>
+    <div style="font-family:'Source Serif 4',serif;font-size:18px;margin:0 0 14px">Someone greets you: <em>“Amakuru?”</em> — choose the natural reply.</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <sc-for list="{{ placeOpts }}" as="o" hint-placeholder-count="3">
+        <div onClick="{{ o.pick }}" style="{{ o.style }}">
+          <span style="font-family:'Source Serif 4',serif;font-size:16px;flex:1">{{ o.t }}</span>
+          <span style="font-size:13px;font-weight:700;color:{{ o.mc }}">{{ o.mark }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ placeFb }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:13.5px;font-weight:600;color:{{ placeFbC }};margin:12px 0 0">{{ placeFb }}</div>
+    </sc-if>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center">
+    <button style="background:#B4470B;color:#FBF5EA;border:none;border-radius:10px;padding:13px 24px;font-size:15px;font-weight:600;cursor:pointer" style-hover="background:#93390A">Begin placement</button>
+    <button onClick="{{ goRoadmap }}" style="background:none;border:1px solid #D8CDB6;color:#75695A;border-radius:10px;padding:13px 20px;font-size:15px;font-weight:600;cursor:pointer" style-hover="border-color:#B4470B;color:#B4470B">I'm brand new — start at A1</button>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;gamification&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;light&quot;, &quot;structured&quot;], &quot;default&quot;: &quot;light&quot;, &quot;tsType&quot;: &quot;'light'|'structured'&quot;, &quot;section&quot;: &quot;Product&quot;, &quot;description&quot;: &quot;light shows the rhythm pill; structured hides all momentum mechanics&quot;}, &quot;culturalNotes&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Product&quot;, &quot;description&quot;: &quot;Umuco culture cards in lessons and conversation&quot;}, &quot;paceHoursPerWeek&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;min&quot;: 2, &quot;max&quot;: 14, &quot;step&quot;: 1, &quot;default&quot;: 5, &quot;unit&quot;: &quot;h/wk&quot;, &quot;section&quot;: &quot;Learner&quot;, &quot;description&quot;: &quot;Recomputes the B1 arrival date across the app&quot;}}">
+const NATIVE_BARS = [8,16,24,30,22,12,18,28,32,24,14,8,20,26,18,10];
+const USER_BARS = [7,14,22,26,20,10,15,24,27,20,12,7,17,22,15,8];
+const USER_FLAG = [0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0];
+const LISTEN_BARS = [6,12,20,28,34,26,16,8,14,24,30,22,12,18,26,32,24,14,8,16,22,28,20,10,6,14,22,30,26,18,10,16,24,28,18,8];
+const REPLIES = [
+  {ky:'Nta kibazo! Ndaguha ibiri ku magana ane.', en:'No problem! I\u2019ll give you two for four hundred.'},
+  {ky:'Yego, mfite n\u2019ibirayi bishya bya Musanze.', en:'Yes, I also have fresh potatoes from Musanze.'},
+  {ky:'Urakoze cyane! Umunsi mwiza, mwana wanjye.', en:'Thank you very much! Have a lovely day, my dear.'}
+];
+class Component extends DCLogic {
+  state = {
+    screen: 'today', playingId: null, convoInput: '', replyIdx: 0,
+    lessonPick: null, listenPick: null, placePick: null,
+    transcriptOpen: false, speed: 0,
+    messages: [
+      {role:'vendor', ky:'Muraho neza! Urakeneye iki uyu munsi?', en:'Hello there! What do you need today?'},
+      {role:'user', ky:'Muraho! Nshaka inyanya ibiri.', en:'Hello! I want two tomatoes.', coach:{title:'inyanya ebyiri', body:'Counting follows the noun\u2019s class: inyanya (class 9/10) takes ebyiri, not ibiri. And notice \u2014 you dropped -ra- (\u201cnshaka\u201d). Locals really do that in quick speech; the full form is \u201cndashaka\u201d. Keep both.'}},
+      {role:'vendor', ky:'Inyanya ebyiri \u2014 ni byiza! Ikilo ni magana atanu.', en:'Two tomatoes \u2014 very well! A kilo is five hundred.'}
+    ]
+  };
+  go(id) {
+    this.setState({screen: id}, () => { const el = document.getElementById('imv-main'); if (el) el.scrollTop = 0; });
+  }
+  play(id) {
+    clearTimeout(this._pt);
+    this.setState({playingId: id});
+    this._pt = setTimeout(() => this.setState({playingId: null}), 2400);
+  }
+  send() {
+    const t = this.state.convoInput.trim();
+    if (!t) return;
+    const r = REPLIES[this.state.replyIdx % REPLIES.length];
+    this.setState(s => ({messages: [...s.messages, {role:'user', ky:t}], convoInput:'', replyIdx: s.replyIdx + 1}));
+    clearTimeout(this._rt);
+    this._rt = setTimeout(() => this.setState(s => ({messages: [...s.messages, {role:'vendor', ky:r.ky, en:r.en}]})), 900);
+  }
+  playBtn(id, on, off) {
+    const p = this.state.playingId === id;
+    return {glyph: p ? '\u25A0' : '\u25B6', bg: p ? on : 'transparent', fg: p ? (off || '#FBF5EA') : on, play: () => this.play(id)};
+  }
+  mkOpts(list, correct, key) {
+    const picked = this.state[key];
+    return list.map((t, i) => {
+      let border = '#E7DECC', bg = '#FFFDF6', mark = '', mc = '#75695A';
+      if (picked != null) {
+        if (i === correct) { border = '#2F6B4F'; bg = '#E4EEE7'; mark = '\u2713'; mc = '#2F6B4F'; }
+        else if (i === picked) { border = '#C2551A'; bg = '#F8E7DB'; mark = '\u00D7'; mc = '#B4470B'; }
+      }
+      return {t, mark, mc, pick: () => this.setState({[key]: i}),
+        style: `display:flex;align-items:center;gap:10px;padding:12px 16px;border:1.5px solid ${border};border-radius:10px;cursor:pointer;background:${bg}`};
+    });
+  }
+  fb(key, correct, good, bad) {
+    const p = this.state[key];
+    if (p == null) return {text: '', color: ''};
+    return p === correct ? {text: good, color: '#2F6B4F'} : {text: bad, color: '#B4470B'};
+  }
+  renderVals() {
+    const scr = this.state.screen;
+    const pace = Math.max(1, Number(this.props.paceHoursPerWeek ?? 5));
+    const weeks = Math.ceil((190 - 34) / pace);
+    const d = new Date(2026, 7, 6); d.setDate(d.getDate() + weeks * 7);
+    const eta = d.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+    const gam = this.props.gamification ?? 'light';
+    const cult = this.props.culturalNotes ?? true;
+    const nav = (id, label, badge) => ({
+      id, label, badge: badge || '', go: () => this.go(id),
+      dot: scr === id ? '#C2551A' : '#4A4030',
+      style: 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13.5px;' +
+        (scr === id ? 'background:rgba(194,85,26,.22);color:#F6D9C2;font-weight:600' : 'color:#C9BCA7;font-weight:500')
+    });
+    const navSections = [
+      {label:'Learn', items:[nav('today','Today'), nav('roadmap','Roadmap'), nav('lesson','Lesson','3.2'), nav('vocab','Vocabulary','8')]},
+      {label:'Practice', items:[nav('convo','Conversation'), nav('pron','Pronunciation'), nav('listen','Listening')]},
+      {label:'Track', items:[nav('progress','Progress'), nav('place','Placement')]}
+    ];
+    const sessionBlocks = [
+      {tag:'REVIEW', tagBg:'#E4EEE7', tagFg:'#2F6B4F', mins:'5 MIN', title:'8 words due', sub:'Spaced review from Units 2\u20133', go:() => this.go('vocab')},
+      {tag:'LESSON', tagBg:'#F8E7DB', tagFg:'#B4470B', mins:'12 MIN', title:'Noun classes: people', sub:'umu- / aba- \u2014 lesson 3.2', go:() => this.go('lesson')},
+      {tag:'SPEAK', tagBg:'#F6ECD8', tagFg:'#9A6A14', mins:'8 MIN', title:'Kimironko market run', sub:'Live conversation with Mukamana', go:() => this.go('convo')}
+    ];
+    const segTags = ['done','you \u00b7 41%','','','',''];
+    const cefrSegs = ['A1','A2','B1','B2','C1','C2'].map((label, i) => ({
+      label, tag: segTags[i],
+      fill: i === 0 ? '100%' : i === 1 ? '41%' : '0%',
+      color: i === 0 ? '#2F6B4F' : '#B4470B',
+      lc: i === 0 ? '#2F6B4F' : i === 1 ? '#B4470B' : '#A2937E'
+    }));
+    const dayFlags = [1,1,0,1,1,1,1,0,1,1,1,1,1,1];
+    const days = dayFlags.map((f, i) => ({bg: f ? '#2F6B4F' : '#EDE4D2', border: i === 13 ? '2px solid #B4470B' : 'none'}));
+    const unit = (n, name, st) => ({
+      n, name,
+      mark: st === 'done' ? '\u2713' : st === 'now' ? '41%' : '',
+      mc: st === 'now' ? '#B4470B' : '#2F6B4F',
+      w: st === 'future' ? '400' : st === 'now' ? '600' : '500',
+      style: 'display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;margin:10px 0 0;' +
+        (st === 'now' ? 'background:#F8E7DB;border:1px solid #EBC3A8' : st === 'done' ? 'background:#FAF6EB' : 'background:#FAF6EB;color:#75695A')
+    });
+    const levels = [
+      {code:'A1', name:'Foundations', desc:'Greetings, self-introduction, numbers, basic needs.', meta:'COMPLETE', metaC:'#2F6B4F', bBg:'#2F6B4F', bFg:'#F3EDE0', border:'#E7DECC', units:[]},
+      {code:'A2', name:'Everyday exchanges', desc:'Daily life in short, real sentences \u2014 markets, family, getting around.', meta:'UNIT 3 OF 6', metaC:'#B4470B', bBg:'#B4470B', bFg:'#FBF5EA', border:'#DDA073', units:[
+        unit('01','Greetings & people','done'), unit('02','Family & home','done'), unit('03','Market & money','now'),
+        unit('04','Getting around Kigali','future'), unit('05','Food & eating','future'), unit('06','Speaking check \u00b7 A2 exit','future')
+      ]},
+      {code:'B1', name:'Conversational', desc:'Tell stories, handle any daily situation, speak in past and future.', meta:'\u2192 ' + eta.toUpperCase(), metaC:'#75695A', bBg:'#EDE4D2', bFg:'#75695A', border:'#E7DECC', units:[]},
+      {code:'B2', name:'Independent', desc:'Debate, work meetings, nuance \u2014 comfortable at native speed.', meta:'', metaC:'#A2937E', bBg:'#EDE4D2', bFg:'#75695A', border:'#E7DECC', units:[]},
+      {code:'C1', name:'Fluent', desc:'Effortless conversation, humor, idiom \u2014 near-native range.', meta:'', metaC:'#A2937E', bBg:'#EDE4D2', bFg:'#75695A', border:'#E7DECC', units:[]},
+      {code:'C2', name:'Mastery', desc:'Full cultural and professional command.', meta:'', metaC:'#A2937E', bBg:'#EDE4D2', bFg:'#75695A', border:'#E7DECC', units:[]}
+    ];
+    const nounRows = [
+      {stem:'ntu', en:'person \u2192 people'}, {stem:'gore', en:'woman \u2192 women'}, {stem:'gabo', en:'man \u2192 men'},
+      {stem:'curuzi', en:'trader \u2192 traders'}, {stem:'nyeshuri', en:'student \u2192 students'}
+    ];
+    const exs = [
+      {id:'ex1', ky:'Umucuruzi ari ku isoko.', en:'The trader is at the market.', voice:'DIANE'},
+      {id:'ex2', ky:'Abana bakunda amata.', en:'The children like milk.', voice:'EMMANUEL'},
+      {id:'ex3', ky:'Abagore babiri baraza.', en:'Two women are coming.', voice:'DIANE'}
+    ];
+    const lessonExamples = exs.map(e => { const b = this.playBtn(e.id, '#B4470B'); return {...e, glyph: b.glyph, btnBg: b.bg, btnFg: b.fg, play: b.play}; });
+    const messages = this.state.messages.map(m => {
+      const user = m.role === 'user';
+      return {
+        ky: m.ky, en: m.en || '', glossC: user ? '#B3A58C' : '#75695A',
+        hasCoach: !!m.coach, coachTitle: m.coach ? m.coach.title : '', coachBody: m.coach ? m.coach.body : '',
+        wrap: 'display:flex;flex-direction:column;align-items:' + (user ? 'flex-end' : 'flex-start'),
+        bubble: user
+          ? 'background:#221A10;color:#F3EDE0;border-radius:14px 14px 4px 14px;padding:12px 16px;max-width:78%'
+          : 'background:#F6F0E2;border:1px solid #E7DECC;border-radius:14px 14px 14px 4px;padding:12px 16px;max-width:78%'
+      };
+    });
+    const hints = [
+      {t:'Ni angahe?'}, {t:'Gabanya gato, nyabuneka.'}, {t:'Urakoze, ni byiza.'}
+    ].map(h => ({...h, use: () => this.setState({convoInput: h.t})}));
+    const sylls = [
+      {t:'a', ok:1, note:''}, {t:'ma', ok:1, note:''}, {t:'k\u00fa', ok:0, note:'tone \u2191'},
+      {t:'ru', ok:1, note:'tap r'}, {t:'ya', ok:1, note:''}, {t:'we', ok:1, note:''}
+    ].map(s => ({t:s.t, note:s.note, bg: s.ok ? '#E4EEE7' : '#F6ECD8', c: s.ok ? '#2F6B4F' : '#9A6A14', nc: s.ok ? '#2F6B4F' : '#C98A1B'}));
+    const speeds = ['0.7\u00d7 learner', '1\u00d7 street'].map((t, i) => ({
+      t, pick: () => this.setState({speed: i}),
+      style: 'border-radius:999px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;' +
+        (this.state.speed === i ? 'background:#D99A2B;color:#221A10;border:1px solid #D99A2B' : 'background:none;color:#B3A58C;border:1px solid #3B3120')
+    }));
+    const transcript = [
+      {who:'ERIC', wc:'#B4470B', ky:'Mwiriwe! Ujya i Nyamirambo?', en:'Good afternoon! Are you going to Nyamirambo?'},
+      {who:'MOTARI', wc:'#2F6B4F', ky:'Yego. Ni magana atatu.', en:'Yes. Three hundred francs.'},
+      {who:'ERIC', wc:'#B4470B', ky:'Ni byiza. Tugende!', en:'Alright. Let\u2019s go!'},
+      {who:'MOTARI', wc:'#2F6B4F', ky:'Fata ingofero.', en:'Take the helmet.'}
+    ];
+    const decks = [
+      {ky:'Isoko', en:'Market & money', count:32, p:68, sampleKy:'Ni angahe?', sampleEn:'How much?'},
+      {ky:'Urugo', en:'Family & home', count:41, p:90, sampleKy:'umuryango', sampleEn:'family'},
+      {ky:'Ingendo', en:'Moto & transport', count:28, p:35, sampleKy:'Tugende!', sampleEn:'let\u2019s go'},
+      {ky:'Akazi', en:'Work & office', count:36, p:12, sampleKy:'inama', sampleEn:'meeting'},
+      {ky:'Kwa muganga', en:'Health', count:24, p:0, sampleKy:'umuti', sampleEn:'medicine'},
+      {ky:'Ibirori', en:'Celebrations', count:30, p:0, sampleKy:'ubukwe', sampleEn:'wedding'}
+    ].map(dk => ({...dk, pct: dk.p + '%', pc: dk.p > 0 ? '#B4470B' : '#A2937E', bar: dk.p >= 80 ? '#2F6B4F' : '#B4470B'}));
+    const skills = [
+      {name:'Speaking', p:36, cefr:'A1+'}, {name:'Listening', p:54, cefr:'A2'}, {name:'Reading', p:62, cefr:'A2'},
+      {name:'Writing', p:31, cefr:'A1+'}, {name:'Grammar', p:55, cefr:'A2'}, {name:'Vocabulary', p:48, cefr:'A2'}
+    ].map(s => ({...s, w: s.p + '%', c: s.p < 40 ? '#C98A1B' : '#2F6B4F'}));
+    const candos = [
+      {text:'Greet someone, introduce myself, ask how they are', done:1},
+      {text:'Buy food at a market and negotiate a fair price', done:1},
+      {text:'Describe my family and where I live', done:1},
+      {text:'Ask for and understand simple directions', done:0},
+      {text:'Talk about my week in the past tense', done:0}
+    ].map(cd => ({text: cd.text, done: cd.done, mark: cd.done ? '\u2713' : '\u25CB', mc: cd.done ? '#2F6B4F' : '#C9BCA7', tc: cd.done ? '#241C12' : '#75695A'}));
+    const lfb = this.fb('lessonPick', 1, 'Yego! umu- flips to aba-: umwana \u2192 abana.', 'Not quite \u2014 keep the stem, swap the prefix: umwana \u2192 abana.');
+    const nfb = this.fb('listenPick', 0, 'Wumvise neza \u2014 you heard it. \u201cUjya i Nyamirambo?\u201d', 'Listen again for \u201cUjya i\u2026\u201d \u2014 the place follows it.');
+    const pfb = this.fb('placePick', 0, 'Yego! \u201cAmakuru?\u201d asks for your news \u2014 \u201cNi meza\u201d says all is well.', 'That answers a different question \u2014 \u201cAmakuru?\u201d wants \u201cNi meza\u201d.');
+    const potd = this.playBtn('potd', '#D99A2B', '#221A10');
+    const pn = this.playBtn('pronNative', '#B4470B');
+    const pm = this.playBtn('pronMine', '#75695A');
+    const lp = this.playBtn('listen', '#D99A2B', '#221A10');
+    const w1 = this.playBtn('w1', '#D99A2B');
+    const nw = this.playBtn('now', '#D99A2B');
+    return {
+      navSections, showRhythm: gam === 'light', showCulture: cult,
+      isToday: scr === 'today', isRoadmap: scr === 'roadmap', isLesson: scr === 'lesson', isConvo: scr === 'convo',
+      isPron: scr === 'pron', isListen: scr === 'listen', isVocab: scr === 'vocab', isProgress: scr === 'progress', isPlace: scr === 'place',
+      goLesson: () => this.go('lesson'), goRoadmap: () => this.go('roadmap'), goVocab: () => this.go('vocab'), goPlace: () => this.go('place'),
+      sessionBlocks, cefrSegs, days, levels, nounRows, lessonExamples, messages, hints, sylls, speeds, transcript, decks, skills, candos,
+      eta, paceLabel: pace + ' h',
+      lessonOpts: this.mkOpts(['imyana', 'abana', 'abwana'], 1, 'lessonPick'), lessonFb: lfb.text, lessonFbC: lfb.color,
+      listenOpts: this.mkOpts(['Nyamirambo', 'Kimironko', 'Remera'], 0, 'listenPick'), listenFb: nfb.text, listenFbC: nfb.color,
+      placeOpts: this.mkOpts(['Ni meza, murakoze!', 'Nitwa Ange.', 'Ndashaka amazi.'], 0, 'placePick'), placeFb: pfb.text, placeFbC: pfb.color,
+      convoInput: this.state.convoInput,
+      onConvoInput: e => this.setState({convoInput: e.target.value}),
+      onConvoKey: e => { if (e.key === 'Enter') this.send(); },
+      onSend: () => this.send(),
+      transcriptOpen: this.state.transcriptOpen, transcriptLabel: this.state.transcriptOpen ? 'Hide' : 'Show',
+      toggleTranscript: () => this.setState(s => ({transcriptOpen: !s.transcriptOpen})),
+      potdPlay: potd.play, potdGlyph: potd.glyph, potdBg: potd.bg, potdFg: potd.fg,
+      pronNativePlay: pn.play, pronNativeGlyph: pn.glyph, pronNativeBg: pn.bg, pronNativeFg: pn.fg,
+      pronMinePlay: pm.play, pronMineGlyph: pm.glyph, pronMineBg: pm.bg, pronMineFg: pm.fg,
+      listenPlay: lp.play, listenGlyph: lp.glyph, listenBg: lp.bg, listenFg: lp.fg,
+      w1Play: w1.play, w1Glyph: w1.glyph, nowPlay: nw.play, nowGlyph: nw.glyph,
+      nativeBars: NATIVE_BARS.map(h => ({h})),
+      userBars: USER_BARS.map((h, i) => ({h, c: USER_FLAG[i] ? '#C98A1B' : '#4A4030'})),
+      listenBars: LISTEN_BARS.map(h => ({h, c: '#8A7D66'}))
+    };
+  }
+}
+</script>
+</body>
+</html>

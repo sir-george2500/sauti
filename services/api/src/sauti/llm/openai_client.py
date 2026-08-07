@@ -1,0 +1,68 @@
+"""Hand-rolled OpenAI chat/completions client over httpx — no SDK needed."""
+from __future__ import annotations
+
+import httpx
+
+from sauti.errors import ApiError
+from sauti.llm.client import LlmClient, LlmTurn, ToolCall, ToolSpec
+
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+
+
+class OpenAiLlmClient:
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini", timeout_s: float = 30.0):
+        self._api_key = api_key
+        self._model = model
+        self._timeout = timeout_s
+
+    async def complete(
+        self,
+        messages: list[dict],
+        tools: list[ToolSpec] | None = None,
+        tool_choice: str | None = None,
+    ) -> LlmTurn:
+        if not self._api_key:
+            raise ApiError(503, "AI_UNAVAILABLE", "AI is not configured")
+        # max_tokens: replies are 1–2 short sentences / a small tool-call JSON;
+        # the cap bounds spend if the model runs away.
+        body: dict = {
+            "model": self._model,
+            "messages": messages,
+            "temperature": 0.6,
+            "max_tokens": 500,
+        }
+        if tools:
+            body["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.name,
+                        "description": t.description,
+                        "parameters": t.parameters,
+                    },
+                }
+                for t in tools
+            ]
+        if tool_choice:
+            body["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                resp = await client.post(
+                    OPENAI_URL,
+                    json=body,
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                )
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise ApiError(502, "AI_ERROR", f"AI backend failed: {type(exc).__name__}")
+        data = resp.json()
+        msg = data["choices"][0]["message"]
+        tool_calls = [
+            ToolCall(
+                id=c["id"],
+                name=c["function"]["name"],
+                arguments_json=c["function"]["arguments"] or "{}",
+            )
+            for c in (msg.get("tool_calls") or [])
+        ]
+        return LlmTurn(content=msg.get("content"), tool_calls=tool_calls)

@@ -1,0 +1,2 @@
+# Runtime artifacts of the stub speech backend (uploads + generated TTS wavs)
+var/

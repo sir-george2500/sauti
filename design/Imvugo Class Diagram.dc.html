@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700&family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3EDE0;font-family:'Instrument Sans',system-ui,sans-serif;color:#241C12;-webkit-font-smoothing:antialiased}
+a{color:#B4470B;text-decoration:none}a:hover{color:#8F3708}
+</style>
+</helmet>
+<div style="max-width:1080px;margin:0 auto;padding:56px 48px 100px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 8px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <svg width="24" height="13" viewBox="0 0 24 13"><path d="M0 13 L6 0 L12 13 Z" fill="#C2551A"></path><path d="M12 13 L18 0 L24 13 Z" fill="#D99A2B"></path></svg>
+      <span style="font-family:'Source Serif 4',serif;font-size:21px;font-weight:700">imvugo</span>
+    </div>
+    <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">v0.1 · AUG 2026 · BACKEND DOMAIN</span>
+  </div>
+  <h1 style="font-family:'Source Serif 4',serif;font-size:40px;font-weight:600;letter-spacing:-.01em;margin:18px 0 10px">Class diagram</h1>
+  <p style="font-size:15.5px;color:#75695A;line-height:1.6;max-width:660px;margin:0 0 18px;text-wrap:pretty">Domain model and service layer for the FastAPI backend. Entities are SQLAlchemy models with generated Pydantic read/write schemas; services are plain classes wired in with <span style="font-family:'Spline Sans Mono',monospace;font-size:13px">Depends()</span> — stateless, testable, no framework in the domain.</p>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin:0 0 40px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">
+    <span><span style="color:#B4470B">◆</span> composition</span>
+    <span><span style="color:#B4470B">→</span> reference (FK)</span>
+    <span><span style="background:#221A10;color:#F3EDE0;border-radius:3px;padding:1px 5px">«service»</span> stateless</span>
+    <span><span style="background:#E4EEE7;color:#2F6B4F;border-radius:3px;padding:1px 5px">«value»</span> immutable, not persisted</span>
+    <span><span style="background:#F6ECD8;color:#9A6A14;border-radius:3px;padding:1px 5px">«enum»</span></span>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 14px">01 · Entities</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;align-items:start;margin:0 0 44px">
+
+    <div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#75695A;margin:0 0 10px">CURRICULUM AGGREGATE</div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Course</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">id: UUID<br>code: KIN | SWA | FRA<br>name: str</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Level</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">cefr: <span style="color:#9A6A14">CEFR</span><br>title: str · ord: int</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Unit</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">title: str<br>situation_tag: str · ord: int</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Lesson</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">title: str · ord: int<br>grammar_md: str<br>culture_note: str?</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #DDA073;border-radius:10px;overflow:hidden">
+        <div style="background:#F8E7DB;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #DDA073">Item <span style="font-weight:400;font-size:11px;color:#B4470B">— the atom</span></div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">sentence: str · gloss: str<br>phoneme_ref: JSON<br>tags: list[str]<br>audio_ref: S3Key<br>voice_id: <span style="color:#B4470B">→ Voice</span></div>
+      </div>
+      <div style="height:14px"></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Voice</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">speaker: str · region: str<br>consent_ref: DocKey<br>model_version: str</div>
+      </div>
+      <div style="height:14px"></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">CanDo</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">cefr: <span style="color:#9A6A14">CEFR</span> · skill: <span style="color:#9A6A14">Skill</span><br>text: str</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#75695A;margin:0 0 10px">LEARNER AGGREGATE</div>
+      <div style="background:#FFFDF6;border:1.5px solid #DDA073;border-radius:10px;overflow:hidden">
+        <div style="background:#F8E7DB;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #DDA073">User</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">id: UUID · email: str<br>password_hash: str<br>created_at: dt</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ 1</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Profile</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">course_id: <span style="color:#B4470B">→ Course</span><br>pace_hours_week: int<br>placed_level: <span style="color:#9A6A14">CEFR</span>?<br>gamification: light | structured</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Attempt</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">item_id: <span style="color:#B4470B">→ Item</span><br>mode: <span style="color:#9A6A14">Mode</span> · score: float<br>audio_ref: S3Key?<br>pron: <span style="color:#2F6B4F">PronReport</span>? · ts: dt</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">SrsState</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">item_id: <span style="color:#B4470B">→ Item</span><br>due_at: dt · reps: int<br>stability: float · difficulty: float</div>
+        <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">review(grade) → SrsState</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">CanDoStatus</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">cando_id: <span style="color:#B4470B">→ CanDo</span><br>status: learning | confirmed<br>confirmed_via: <span style="color:#B4470B">→ Attempt</span>?</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">PlacementSession</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">theta: float <span style="color:#A2937E">// ability est.</span><br>served: list[<span style="color:#B4470B">→ Item</span>]<br>result: <span style="color:#9A6A14">CEFR</span>?</div>
+        <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">next_item() → Item<br>finalize() → CEFR</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#75695A;margin:0 0 10px">CONVERSATION AGGREGATE</div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Scenario</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">title: str · setting: str<br>persona: JSON <span style="color:#A2937E">// Mukamana…</span><br>goals: list[str]<br>min_cefr: <span style="color:#9A6A14">CEFR</span><br>voice_id: <span style="color:#B4470B">→ Voice</span></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ← *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Conversation</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">user_id: <span style="color:#B4470B">→ User</span><br>scenario_id: <span style="color:#B4470B">→ Scenario</span><br>goals_met: list[str]<br>started_at: dt</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:3px 0"><span style="width:1.5px;height:20px;background:#B4470B;display:block"></span><span style="font-family:'Spline Sans Mono',monospace;font-size:10px;color:#B4470B">1 ◆ *</span></div>
+      <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+        <div style="background:#F6F0E2;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #E7DECC">Message</div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">role: <span style="color:#9A6A14">Role</span><br>text: str · gloss: str?<br>coach: <span style="color:#2F6B4F">CoachNote</span>?<br>audio_ref: S3Key?</div>
+      </div>
+      <div style="height:22px"></div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#75695A;margin:0 0 10px">VALUE OBJECTS</div>
+      <div style="background:#FFFDF6;border:1.5px solid #BFD5C6;border-radius:10px;overflow:hidden;margin:0 0 14px">
+        <div style="background:#E4EEE7;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #BFD5C6;color:#2F6B4F">CoachNote <span style="font-weight:400;font-size:10.5px">«value»</span></div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">title: str · body: str<br>kind: fix | praise | culture</div>
+      </div>
+      <div style="background:#FFFDF6;border:1.5px solid #BFD5C6;border-radius:10px;overflow:hidden;margin:0 0 14px">
+        <div style="background:#E4EEE7;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #BFD5C6;color:#2F6B4F">PronReport <span style="font-weight:400;font-size:10.5px">«value»</span></div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">overall: 0–100<br>phonemes: list[PhonemeScore]<br>tone_flags: list[str]</div>
+      </div>
+      <div style="background:#FFFDF6;border:1.5px solid #BFD5C6;border-radius:10px;overflow:hidden;margin:0 0 14px">
+        <div style="background:#E4EEE7;padding:8px 14px;font-weight:700;font-size:14px;border-bottom:1px solid #BFD5C6;color:#2F6B4F">SessionPlan <span style="font-weight:400;font-size:10.5px">«value»</span></div>
+        <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#4A4030">blocks: list[Block]<br>total_min: int <span style="color:#A2937E">// ≈ 25</span></div>
+      </div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;letter-spacing:.12em;color:#75695A;margin:0 0 10px">ENUMS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:8px;padding:8px 12px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:#9A6A14">CEFR A1‥C2</span>
+        <span style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:8px;padding:8px 12px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:#9A6A14">Mode read·listen·speak·write</span>
+        <span style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:8px;padding:8px 12px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:#9A6A14">Role user·persona·coach</span>
+        <span style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:8px;padding:8px 12px;font-family:'Spline Sans Mono',monospace;font-size:11px;color:#9A6A14">Skill speak·listen·read·write·gram·vocab</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 14px">02 · Service layer</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:0 0 44px">
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">SessionBuilder <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«service»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">build_today(user) → SessionPlan</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">uses → SrsScheduler, ProgressService, curriculum</div>
+    </div>
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">SrsScheduler <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«FSRS»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">due_items(user, n) → list[Item]<br>apply(state, grade) → SrsState</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">pure functions over SrsState</div>
+    </div>
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">ProgressService <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«service»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">record(attempt)<br>skill_estimates(user) → dict<br>eta_to(user, CEFR) → date</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">writes CanDoStatus on confirmations</div>
+    </div>
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">ConversationOrchestrator <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«service»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">open(user, scenario) → ws<br>turn(text | audio) → Message</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">uses → LLMClient, CoachPolicy, SpeechGateway</div>
+    </div>
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">CoachPolicy <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«service»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">evaluate(msg, ctx) → CoachNote?</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">product rule: ≤ 1 correction per turn, praise first</div>
+    </div>
+    <div style="background:#FFFDF6;border:1.5px solid #E7DECC;border-radius:10px;overflow:hidden">
+      <div style="background:#221A10;color:#F3EDE0;padding:9px 14px;font-weight:700;font-size:14px">SpeechGateway <span style="font-weight:400;font-size:10.5px;color:#D99A2B">«service»</span></div>
+      <div style="padding:10px 14px;font-family:'Spline Sans Mono',monospace;font-size:11.5px;line-height:1.9;color:#2F6B4F">tts(text, voice) → S3Key<br>stt(audio, lang) → str<br>score(audio, item) → PronReport</div>
+      <div style="border-top:1px solid #F0E8D8;padding:8px 14px;font-size:11.5px;color:#75695A">façade over GPU model servers — the only class that knows model names</div>
+    </div>
+  </div>
+
+  <div style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:14px;padding:18px 22px">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.13em;color:#9A6A14;margin:0 0 6px">CONVENTIONS</div>
+    <div style="font-size:13.5px;line-height:1.7;color:#5C4A22;text-wrap:pretty">Every entity: <span style="font-family:'Spline Sans Mono',monospace;font-size:12px">id: UUID, created_at, updated_at</span> (omitted above). Aggregates are the transaction boundaries — nothing outside an aggregate is written in the same commit. Value objects cross the API as Pydantic models and are stored as JSONB on their parent. Services depend on interfaces (<span style="font-family:'Spline Sans Mono',monospace;font-size:12px">LLMClient, TTSBackend</span>) so models swap without domain changes.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,191 @@
+
+imvugo
+v0.1 · AUG 2026 · BACKEND DOMAIN
+Class diagram
+Domain model and service layer for the FastAPI backend. Entities are SQLAlchemy models with generated Pydantic read/write schemas; services are plain classes wired in with 
+Depends()
+ — stateless, testable, no framework in the domain.
+◆
+ composition
+→
+ reference (FK)
+«service»
+ stateless
+«value»
+ immutable, not persisted
+«enum»
+01 · Entities
+CURRICULUM AGGREGATE
+Course
+id: UUID
+code: KIN | SWA | FRA
+name: str
+1 ◆ *
+Level
+cefr: 
+CEFR
+title: str · ord: int
+1 ◆ *
+Unit
+title: str
+situation_tag: str · ord: int
+1 ◆ *
+Lesson
+title: str · ord: int
+grammar_md: str
+culture_note: str?
+1 ◆ *
+Item 
+— the atom
+sentence: str · gloss: str
+phoneme_ref: JSON
+tags: list[str]
+audio_ref: S3Key
+voice_id: 
+→ Voice
+Voice
+speaker: str · region: str
+consent_ref: DocKey
+model_version: str
+CanDo
+cefr: 
+CEFR
+ · skill: 
+Skill
+text: str
+LEARNER AGGREGATE
+User
+id: UUID · email: str
+password_hash: str
+created_at: dt
+1 ◆ 1
+Profile
+course_id: 
+→ Course
+pace_hours_week: int
+placed_level: 
+CEFR
+?
+gamification: light | structured
+1 ◆ *
+Attempt
+item_id: 
+→ Item
+mode: 
+Mode
+ · score: float
+audio_ref: S3Key?
+pron: 
+PronReport
+? · ts: dt
+1 ◆ *
+SrsState
+item_id: 
+→ Item
+due_at: dt · reps: int
+stability: float · difficulty: float
+review(grade) → SrsState
+1 ◆ *
+CanDoStatus
+cando_id: 
+→ CanDo
+status: learning | confirmed
+confirmed_via: 
+→ Attempt
+?
+1 ◆ *
+PlacementSession
+theta: float 
+// ability est.
+served: list[
+→ Item
+]
+result: 
+CEFR
+?
+next_item() → Item
+finalize() → CEFR
+CONVERSATION AGGREGATE
+Scenario
+title: str · setting: str
+persona: JSON 
+// Mukamana…
+goals: list[str]
+min_cefr: 
+CEFR
+voice_id: 
+→ Voice
+1 ← *
+Conversation
+user_id: 
+→ User
+scenario_id: 
+→ Scenario
+goals_met: list[str]
+started_at: dt
+1 ◆ *
+Message
+role: 
+Role
+text: str · gloss: str?
+coach: 
+CoachNote
+?
+audio_ref: S3Key?
+VALUE OBJECTS
+CoachNote 
+«value»
+title: str · body: str
+kind: fix | praise | culture
+PronReport 
+«value»
+overall: 0–100
+phonemes: list[PhonemeScore]
+tone_flags: list[str]
+SessionPlan 
+«value»
+blocks: list[Block]
+total_min: int 
+// ≈ 25
+ENUMS
+CEFR A1‥C2
+Mode read·listen·speak·write
+Role user·persona·coach
+Skill speak·listen·read·write·gram·vocab
+02 · Service layer
+SessionBuilder 
+«service»
+build_today(user) → SessionPlan
+uses → SrsScheduler, ProgressService, curriculum
+SrsScheduler 
+«FSRS»
+due_items(user, n) → list[Item]
+apply(state, grade) → SrsState
+pure functions over SrsState
+ProgressService 
+«service»
+record(attempt)
+skill_estimates(user) → dict
+eta_to(user, CEFR) → date
+writes CanDoStatus on confirmations
+ConversationOrchestrator 
+«service»
+open(user, scenario) → ws
+turn(text | audio) → Message
+uses → LLMClient, CoachPolicy, SpeechGateway
+CoachPolicy 
+«service»
+evaluate(msg, ctx) → CoachNote?
+product rule: ≤ 1 correction per turn, praise first
+SpeechGateway 
+«service»
+tts(text, voice) → S3Key
+stt(audio, lang) → str
+score(audio, item) → PronReport
+façade over GPU model servers — the only class that knows model names
+CONVENTIONS
+Every entity: 
+id: UUID, created_at, updated_at
+ (omitted above). Aggregates are the transaction boundaries — nothing outside an aggregate is written in the same commit. Value objects cross the API as Pydantic models and are stored as JSONB on their parent. Services depend on interfaces (
+LLMClient, TTSBackend
+) so models swap without domain changes.

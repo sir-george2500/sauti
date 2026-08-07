@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3EDE0;font-family:'Instrument Sans',system-ui,sans-serif;color:#241C12;-webkit-font-smoothing:antialiased}
+a{color:#B4470B;text-decoration:none}a:hover{color:#8F3708}
+</style>
+</helmet>
+<div style="max-width:920px;margin:0 auto;padding:56px 48px 100px">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:0 0 8px">
+    <div style="display:flex;align-items:center;gap:9px">
+      <svg width="24" height="13" viewBox="0 0 24 13"><path d="M0 13 L6 0 L12 13 Z" fill="#C2551A"></path><path d="M12 13 L18 0 L24 13 Z" fill="#D99A2B"></path></svg>
+      <span style="font-family:'Source Serif 4',serif;font-size:21px;font-weight:700">imvugo</span>
+    </div>
+    <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">v0.1 · AUG 2026 · NEXT.JS + FASTAPI</span>
+  </div>
+  <h1 style="font-family:'Source Serif 4',serif;font-size:40px;font-weight:600;letter-spacing:-.01em;margin:18px 0 10px">System design</h1>
+  <p style="font-size:15.5px;color:#75695A;line-height:1.6;max-width:640px;margin:0 0 14px;text-wrap:pretty">Architecture for an adaptive CEFR-based platform for Kinyarwanda, Swahili and French. The hard, differentiating part is the <strong style="color:#241C12">speech stack</strong> — native-accent TTS and pronunciation scoring — so the design isolates it behind one gateway and keeps everything else boring.</p>
+  <div style="display:flex;gap:8px;margin:0 0 44px">
+    <span style="background:#F8E7DB;color:#B4470B;border-radius:5px;padding:4px 8px;font-size:10.5px;font-weight:700;letter-spacing:.1em">MVP</span>
+    <span style="font-size:12.5px;color:#75695A;align-self:center">ships first ·</span>
+    <span style="background:#EDE4D2;color:#75695A;border-radius:5px;padding:4px 8px;font-size:10.5px;font-weight:700;letter-spacing:.1em">P2</span>
+    <span style="font-size:12.5px;color:#75695A;align-self:center">phase two</span>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:0 0 14px">01 · Architecture</div>
+
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px;margin:0 0 0">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 12px">
+      <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600">Client — Next.js (App Router, Vercel)</span>
+      <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#75695A">TYPESCRIPT · REACT</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">App UI</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">RSC + SSR shell, client islands for practice screens</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">Audio capture</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">MediaRecorder → Opus, uploads via signed URL</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">Audio playback</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">CDN-cached native clips, prefetched per lesson</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">Data layer</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">TanStack Query + WS client for conversation</div></div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;padding:10px 22px"><span style="color:#B4470B;font-size:13px">▼</span><span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">HTTPS REST /api/v1 · WebSocket /ws/conversation · JWT (httpOnly)</span></div>
+
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 12px">
+      <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600">API — FastAPI (Uvicorn, Pydantic v2)</span>
+      <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#75695A">PYTHON 3.12 · ASYNC</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:600">Session builder</span><span style="background:#F8E7DB;color:#B4470B;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:700">MVP</span></div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Assembles the daily 25-min plan: SRS due items + next lesson + one speaking task</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:600">Conversation orchestrator</span><span style="background:#F8E7DB;color:#B4470B;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:700">MVP</span></div><div style="font-size:12px;color:#75695A;margin:3px 0 0">WS loop: persona + CEFR-capped prompt → LLM → coach pass → TTS</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:600">Speech gateway</span><span style="background:#F8E7DB;color:#B4470B;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:700">MVP</span></div><div style="font-size:12px;color:#75695A;margin:3px 0 0">One façade over TTS / STT / scorer — swap models without touching clients</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">Content &amp; curriculum</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">CEFR course tree, lessons, items, culture notes — versioned, editor-authored</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="font-size:13.5px;font-weight:600">Progress &amp; CEFR</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Attempts, skill estimates, can-do confirmations, pace → ETA</div></div>
+      <div style="border:1px solid #E7DECC;border-radius:10px;padding:12px 14px"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:600">Placement engine</span><span style="background:#F8E7DB;color:#B4470B;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:700">MVP</span></div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Adaptive item selection (simple IRT), ends with a scored speaking sample</div></div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;padding:10px 22px"><span style="color:#B4470B;font-size:13px">▼</span><span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A">heavy work → Redis queue (ARQ workers) · inference → GPU model servers</span></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div style="background:#221A10;color:#F3EDE0;border-radius:14px;padding:20px 22px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 12px">
+        <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600">Model serving — GPU</span>
+        <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#D99A2B">THE MOAT</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600;color:#F0C9A6">TTS — native voices</div><div style="font-size:12px;color:#B3A58C;margin:3px 0 0">Multi-speaker model fine-tuned on studio recordings of Kinyarwanda &amp; Swahili speakers; French off-the-shelf</div></div>
+        <div style="background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600;color:#F0C9A6">STT — Whisper fine-tune</div><div style="font-size:12px;color:#B3A58C;margin:3px 0 0">Kinyarwanda has a large Common Voice corpus — fine-tune per language</div></div>
+        <div style="background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600;color:#F0C9A6">Pronunciation scorer</div><div style="font-size:12px;color:#B3A58C;margin:3px 0 0">Forced alignment + per-phoneme goodness scores; tone check for KIN</div></div>
+        <div style="background:#2C2416;border:1px solid #3B3120;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600;color:#F0C9A6">LLM — coach &amp; partner</div><div style="font-size:12px;color:#B3A58C;margin:3px 0 0">Hosted API; personas, CEFR-level vocabulary caps, correction policy</div></div>
+      </div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 12px">
+        <span style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600">Data</span>
+        <span style="font-family:'Spline Sans Mono',monospace;font-size:10.5px;color:#75695A">POSTGRES · REDIS · S3</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="border:1px solid #E7DECC;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600">Postgres</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Users, curriculum, attempts, SRS state, can-do status, conversations</div></div>
+        <div style="border:1px solid #E7DECC;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600">Redis</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Job queue, WS session state, due-item cache, rate limits</div></div>
+        <div style="border:1px solid #E7DECC;border-radius:10px;padding:11px 14px"><div style="font-size:13.5px;font-weight:600">S3 + CDN</div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Native audio corpus, pre-rendered TTS, user recordings (the week-1 vs now archive)</div></div>
+        <div style="border:1px solid #E7DECC;border-radius:10px;padding:11px 14px"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:600">Vector store</span><span style="background:#EDE4D2;color:#75695A;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:700">P2</span></div><div style="font-size:12px;color:#75695A;margin:3px 0 0">Semantic search over items for dynamic review generation</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:48px 0 14px">02 · Key flows</div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;margin:0 0 10px">Pronunciation feedback <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#2F6B4F;font-weight:500">· target &lt; 3 s round-trip</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:12px;line-height:2;color:#241C12">client records Opus → signed-URL upload to S3 → POST /speech/score {item_id, audio_ref} → worker: STT + forced alignment vs reference → per-phoneme GOP + tone contour → verdict JSON → client renders syllable chips</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;margin:0 0 10px">Conversation turn <span style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#2F6B4F;font-weight:500">· streamed over WS</span></div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:12px;line-height:2;color:#241C12">user text or speech (→STT) → orchestrator: persona prompt + level cap + scenario goals → LLM reply → coach pass tags one correction max → TTS (persona voice) → stream {text, gloss, coach?, audio_url} → attempts logged async</div>
+      <div style="font-size:12.5px;color:#75695A;margin:8px 0 0;text-wrap:pretty">Coach policy is product, not model: at most one correction per turn, always after a successful exchange — the design's “encourage first” rule enforced server-side.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:20px 22px">
+      <div style="font-family:'Source Serif 4',serif;font-size:17px;font-weight:600;margin:0 0 10px">Daily session build</div>
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:12px;line-height:2;color:#241C12">GET /session/today → SRS picks due items (FSRS) → next lesson from roadmap position → one speaking task weighted to weakest skill → 25-min plan cached in Redis until completed</div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:48px 0 14px">03 · Data model (core)</div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:8px 22px 20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">users / profiles</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">auth, course, pace_hours_week, placement_result</div></div>
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">courses → levels → units → lessons</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">CEFR tree; lessons carry grammar_md + culture_note</div></div>
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">items</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">sentence, gloss, tags[situation], audio_ref, voice_id, phoneme_ref</div></div>
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">attempts</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">user, item, mode(read|listen|speak|write), score, audio_ref, ts</div></div>
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">srs_state</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">user, item, due_at, stability, difficulty (FSRS params)</div></div>
+      <div style="padding:14px 0;border-bottom:1px solid #F0E8D8"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">cando_status</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">user, cando_id, status(learning|confirmed), confirmed_via_attempt</div></div>
+      <div style="padding:14px 0"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">conversations / messages</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">scenario, persona, goals[], messages(role, text, coach_json, audio_ref)</div></div>
+      <div style="padding:14px 0"><span style="font-family:'Spline Sans Mono',monospace;font-size:12.5px;font-weight:600;color:#B4470B">voices</span><div style="font-size:12.5px;color:#75695A;margin:4px 0 0">speaker, region(Kigali, Butare…), consent_ref, model_version</div></div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:48px 0 14px">04 · API surface (v1)</div>
+  <div style="background:#221A10;border-radius:14px;padding:22px 24px;font-family:'Spline Sans Mono',monospace;font-size:12.5px;line-height:2.1;color:#F3EDE0">
+    <div><span style="color:#D99A2B">POST</span> /auth/register · /auth/login</div>
+    <div><span style="color:#2F9E68">GET </span> /session/today <span style="color:#8A7D66">— the daily plan</span></div>
+    <div><span style="color:#2F9E68">GET </span> /roadmap · /progress · /vocab/decks</div>
+    <div><span style="color:#D99A2B">POST</span> /attempts <span style="color:#8A7D66">— every exercise result lands here</span></div>
+    <div><span style="color:#D99A2B">POST</span> /speech/upload-url → <span style="color:#D99A2B">POST</span> /speech/score</div>
+    <div><span style="color:#2F9E68">GET </span> /tts/{item_id} <span style="color:#8A7D66">— 302 to CDN, pre-rendered</span></div>
+    <div><span style="color:#C77DFF">WS  </span> /ws/conversation/{scenario_id}</div>
+    <div><span style="color:#D99A2B">POST</span> /placement/start · /placement/answer <span style="color:#8A7D66">— adaptive</span></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:48px 0 14px">05 · Native voice pipeline — the differentiator</div>
+  <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:22px 24px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;gap:14px"><span style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:#B4470B;flex:none;width:22px">01</span><div style="font-size:14px;line-height:1.6;text-wrap:pretty"><strong>Record</strong> — 4–6 native speakers per language (mix of regions and ages), scripted sentences + free conversation, studio-quality, with written consent and revenue share. This corpus is an asset, not a cost.</div></div>
+      <div style="display:flex;gap:14px"><span style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:#B4470B;flex:none;width:22px">02</span><div style="font-size:14px;line-height:1.6;text-wrap:pretty"><strong>Align &amp; clean</strong> — segment, transcribe, force-align phonemes; the same alignment data later powers pronunciation scoring.</div></div>
+      <div style="display:flex;gap:14px"><span style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:#B4470B;flex:none;width:22px">03</span><div style="font-size:14px;line-height:1.6;text-wrap:pretty"><strong>Fine-tune</strong> — multi-speaker TTS; keep speaker identity (“Diane · Kigali”) as a product feature, never a generic voice.</div></div>
+      <div style="display:flex;gap:14px"><span style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:#B4470B;flex:none;width:22px">04</span><div style="font-size:14px;line-height:1.6;text-wrap:pretty"><strong>Native review loop</strong> — every generated clip batch is graded by native speakers before it enters the curriculum; failed clips go back to training.</div></div>
+      <div style="display:flex;gap:14px"><span style="font-family:'Spline Sans Mono',monospace;font-size:12px;color:#B4470B;flex:none;width:22px">05</span><div style="font-size:14px;line-height:1.6;text-wrap:pretty"><strong>Pre-render everything static</strong> — all curriculum audio rendered once to S3/CDN (quality-gated, cheap, instant). Live TTS only for dynamic conversation lines.</div></div>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#B4470B;margin:48px 0 14px">06 · Build order</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:0 0 40px">
+    <div style="background:#FFFDF6;border:1px solid #DDA073;border-radius:14px;padding:18px 20px">
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#B4470B;font-weight:600;margin:0 0 8px">M1–M2 · PROVE THE LOOP</div>
+      <div style="font-size:13px;line-height:1.7;color:#241C12">Auth, curriculum tree (Kinyarwanda A1–A2 only), lesson player, SRS reviews, pre-recorded human audio — no models yet. Postgres + FastAPI monolith.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:18px 20px">
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A;font-weight:600;margin:0 0 8px">M3–M4 · SPEECH STACK</div>
+      <div style="font-size:13px;line-height:1.7;color:#241C12">Whisper fine-tune + pronunciation scoring, TTS v1 from the recorded corpus, placement test, conversation over WS with one scenario pack.</div>
+    </div>
+    <div style="background:#FFFDF6;border:1px solid #E7DECC;border-radius:14px;padding:18px 20px">
+      <div style="font-family:'Spline Sans Mono',monospace;font-size:11px;color:#75695A;font-weight:600;margin:0 0 8px">M5+ · SCALE OUT</div>
+      <div style="font-size:13px;line-height:1.7;color:#241C12">Swahili course + voices, French, B1 content, listening packs, week-1-vs-now archive, mobile PWA polish, vector-backed dynamic review.</div>
+    </div>
+  </div>
+
+  <div style="background:#F6ECD8;border:1px solid #E4CFA4;border-radius:14px;padding:18px 22px">
+    <div style="font-size:10.5px;font-weight:700;letter-spacing:.13em;color:#9A6A14;margin:0 0 6px">DECISIONS WORTH ARGUING ABOUT</div>
+    <div style="font-size:13.5px;line-height:1.7;color:#5C4A22;text-wrap:pretty">Monolith FastAPI until it hurts — services are modules, not microservices. Pre-rendered TTS over live synthesis wherever content is static. Whisper fine-tune before custom STT. FSRS over hand-rolled SRS. LLM via hosted API now; revisit self-hosting when conversation volume justifies a GPU pool.</div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,140 @@
+
+imvugo
+v0.1 · AUG 2026 · NEXT.JS + FASTAPI
+System design
+Architecture for an adaptive CEFR-based platform for Kinyarwanda, Swahili and French. The hard, differentiating part is the 
+speech stack
+ — native-accent TTS and pronunciation scoring — so the design isolates it behind one gateway and keeps everything else boring.
+MVP
+ships first ·
+P2
+phase two
+01 · Architecture
+Client — Next.js (App Router, Vercel)
+TYPESCRIPT · REACT
+App UI
+RSC + SSR shell, client islands for practice screens
+Audio capture
+MediaRecorder → Opus, uploads via signed URL
+Audio playback
+CDN-cached native clips, prefetched per lesson
+Data layer
+TanStack Query + WS client for conversation
+▼
+HTTPS REST /api/v1 · WebSocket /ws/conversation · JWT (httpOnly)
+API — FastAPI (Uvicorn, Pydantic v2)
+PYTHON 3.12 · ASYNC
+Session builder
+MVP
+Assembles the daily 25-min plan: SRS due items + next lesson + one speaking task
+Conversation orchestrator
+MVP
+WS loop: persona + CEFR-capped prompt → LLM → coach pass → TTS
+Speech gateway
+MVP
+One façade over TTS / STT / scorer — swap models without touching clients
+Content & curriculum
+CEFR course tree, lessons, items, culture notes — versioned, editor-authored
+Progress & CEFR
+Attempts, skill estimates, can-do confirmations, pace → ETA
+Placement engine
+MVP
+Adaptive item selection (simple IRT), ends with a scored speaking sample
+▼
+heavy work → Redis queue (ARQ workers) · inference → GPU model servers
+Model serving — GPU
+THE MOAT
+TTS — native voices
+Multi-speaker model fine-tuned on studio recordings of Kinyarwanda & Swahili speakers; French off-the-shelf
+STT — Whisper fine-tune
+Kinyarwanda has a large Common Voice corpus — fine-tune per language
+Pronunciation scorer
+Forced alignment + per-phoneme goodness scores; tone check for KIN
+LLM — coach & partner
+Hosted API; personas, CEFR-level vocabulary caps, correction policy
+Data
+POSTGRES · REDIS · S3
+Postgres
+Users, curriculum, attempts, SRS state, can-do status, conversations
+Redis
+Job queue, WS session state, due-item cache, rate limits
+S3 + CDN
+Native audio corpus, pre-rendered TTS, user recordings (the week-1 vs now archive)
+Vector store
+P2
+Semantic search over items for dynamic review generation
+02 · Key flows
+Pronunciation feedback 
+· target < 3 s round-trip
+client records Opus → signed-URL upload to S3 → POST /speech/score {item_id, audio_ref} → worker: STT + forced alignment vs reference → per-phoneme GOP + tone contour → verdict JSON → client renders syllable chips
+Conversation turn 
+· streamed over WS
+user text or speech (→STT) → orchestrator: persona prompt + level cap + scenario goals → LLM reply → coach pass tags one correction max → TTS (persona voice) → stream {text, gloss, coach?, audio_url} → attempts logged async
+Coach policy is product, not model: at most one correction per turn, always after a successful exchange — the design's “encourage first” rule enforced server-side.
+Daily session build
+GET /session/today → SRS picks due items (FSRS) → next lesson from roadmap position → one speaking task weighted to weakest skill → 25-min plan cached in Redis until completed
+03 · Data model (core)
+users / profiles
+auth, course, pace_hours_week, placement_result
+courses → levels → units → lessons
+CEFR tree; lessons carry grammar_md + culture_note
+items
+sentence, gloss, tags[situation], audio_ref, voice_id, phoneme_ref
+attempts
+user, item, mode(read|listen|speak|write), score, audio_ref, ts
+srs_state
+user, item, due_at, stability, difficulty (FSRS params)
+cando_status
+user, cando_id, status(learning|confirmed), confirmed_via_attempt
+conversations / messages
+scenario, persona, goals[], messages(role, text, coach_json, audio_ref)
+voices
+speaker, region(Kigali, Butare…), consent_ref, model_version
+04 · API surface (v1)
+POST
+ /auth/register · /auth/login
+GET 
+ /session/today 
+— the daily plan
+GET 
+ /roadmap · /progress · /vocab/decks
+POST
+ /attempts 
+— every exercise result lands here
+POST
+ /speech/upload-url → 
+POST
+ /speech/score
+GET 
+ /tts/{item_id} 
+— 302 to CDN, pre-rendered
+WS 
+ /ws/conversation/{scenario_id}
+POST
+ /placement/start · /placement/answer 
+— adaptive
+05 · Native voice pipeline — the differentiator
+01
+Record
+ — 4–6 native speakers per language (mix of regions and ages), scripted sentences + free conversation, studio-quality, with written consent and revenue share. This corpus is an asset, not a cost.
+02
+Align & clean
+ — segment, transcribe, force-align phonemes; the same alignment data later powers pronunciation scoring.
+03
+Fine-tune
+ — multi-speaker TTS; keep speaker identity (“Diane · Kigali”) as a product feature, never a generic voice.
+04
+Native review loop
+ — every generated clip batch is graded by native speakers before it enters the curriculum; failed clips go back to training.
+05
+Pre-render everything static
+ — all curriculum audio rendered once to S3/CDN (quality-gated, cheap, instant). Live TTS only for dynamic conversation lines.
+06 · Build order
+M1–M2 · PROVE THE LOOP
+Auth, curriculum tree (Kinyarwanda A1–A2 only), lesson player, SRS reviews, pre-recorded human audio — no models yet. Postgres + FastAPI monolith.
+M3–M4 · SPEECH STACK
+Whisper fine-tune + pronunciation scoring, TTS v1 from the recorded corpus, placement test, conversation over WS with one scenario pack.
+M5+ · SCALE OUT
+Swahili course + voices, French, B1 content, listening packs, week-1-vs-now archive, mobile PWA polish, vector-backed dynamic review.
+DECISIONS WORTH ARGUING ABOUT
+Monolith FastAPI until it hurts — services are modules, not microservices. Pre-rendered TTS over live synthesis wherever content is static. Whisper fine-tune before custom STT. FSRS over hand-rolled SRS. LLM via hosted API now; revisit self-hosting when conversation volume justifies a GPU pool.

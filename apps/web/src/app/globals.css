@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  /* Warm, editorial palette: dark ink on paper, one clay accent. */
+  --color-paper: #faf7f0;
+  --color-cream: #f2ecdf;
+  --color-card: #fffdf8;
+  --color-ink: #241c12;
+  --color-ink-soft: #7a6f5f;
+  --color-line: #e6ddcb;
+  --color-accent: #b0502a;
+  --color-accent-deep: #8a3c1e;
+  --color-accent-soft: #f6e3d6;
+
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(36 28 18 / 0.05), 0 8px 24px -12px rgb(36 28 18 / 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Kinyarwanda text is first-class: serif display face, comfortable size. */
+.ky {
+  font-family: var(--font-display);
+}
+
+/* Rendered lesson markdown (grammar_md). */
+.prose-grammar {
+  line-height: 1.75;
+}
+.prose-grammar > * + * {
+  margin-top: 0.9em;
+}
+.prose-grammar h1,
+.prose-grammar h2,
+.prose-grammar h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.4em;
+}
+.prose-grammar h1 {
+  font-size: 1.4rem;
+}
+.prose-grammar h2 {
+  font-size: 1.2rem;
+}
+.prose-grammar h3 {
+  font-size: 1.05rem;
+}
+.prose-grammar strong {
+  color: var(--color-accent-deep);
+  font-weight: 650;
+}
+.prose-grammar em {
+  font-family: var(--font-display);
+}
+.prose-grammar ul,
+.prose-grammar ol {
+  padding-left: 1.4em;
+}
+.prose-grammar ul {
+  list-style: disc;
+}
+.prose-grammar ol {
+  list-style: decimal;
+}
+.prose-grammar li + li {
+  margin-top: 0.35em;
+}
+.prose-grammar code {
+  font-family: var(--font-display);
+  background: var(--color-cream);
+  border-radius: 0.3rem;
+  padding: 0.05em 0.35em;
+}
+.prose-grammar .table-wrap {
+  overflow-x: auto;
+}
+.prose-grammar table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.prose-grammar th {
+  text-align: left;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-line);
+}
+.prose-grammar td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--color-line);
+  font-family: var(--font-display);
+}
+.prose-grammar td:last-child {
+  font-family: var(--font-sans);
+  color: var(--color-ink-soft);
+}

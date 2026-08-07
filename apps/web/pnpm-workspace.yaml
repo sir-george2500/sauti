@@ -1,0 +1,6 @@
+# Approve install build scripts for these native packages.
+# sharp         — Next.js production image optimization
+# unrs-resolver — ESLint import resolver native binding
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
