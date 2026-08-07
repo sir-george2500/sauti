@@ -321,9 +321,14 @@ export interface ConversationClientMessage {
   audio_ref?: string;
 }
 
-/** Server -> client stream frames. */
+/**
+ * Server -> client stream frames. With the real speech backend the partner
+ * frame arrives text-first (audio_url null) and a follow-up
+ * {type: "partner_audio", audio_url} frame carries the synthesized audio once
+ * ready; the stub backend keeps audio_url inline on the partner frame.
+ */
 export interface ConversationServerMessage {
-  type: "partner" | "coach" | "goal" | "error";
+  type: "partner" | "coach" | "goal" | "error" | "partner_audio";
   text: string;
   gloss?: string | null;
   coach?: CoachNote | null;

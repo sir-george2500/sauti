@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getLesson } from "@/lib/api/endpoints";
+import { getRoadmap, lessonFromRoadmap } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
 import { Mcq } from "@/components/Mcq";
 import { Card, CardLabel, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
@@ -16,20 +16,20 @@ export default function ListeningPage({
   params: Promise<{ lessonId: string }>;
 }) {
   const { lessonId } = use(params);
-  const lessonQuery = useQuery({
-    queryKey: ["lesson", lessonId],
-    queryFn: () => getLesson(lessonId),
-  });
+  // Shares the ["roadmap"] cache with the sidebar/lesson screens — the
+  // listening lines are the lesson's items out of the same payload.
+  const roadmapQuery = useQuery({ queryKey: ["roadmap"], queryFn: getRoadmap });
+  const view = roadmapQuery.data ? lessonFromRoadmap(roadmapQuery.data, lessonId) : null;
   const [played, setPlayed] = useState(false);
   const [speed, setSpeed] = useState<0 | 1>(1);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
 
-  if (lessonQuery.isPending) return <LoadingNote label="Cueing the voices…" />;
-  if (lessonQuery.isError || !lessonQuery.data) {
+  if (roadmapQuery.isPending) return <LoadingNote label="Cueing the voices…" />;
+  if (roadmapQuery.isError || !view) {
     return <ErrorNote message="This listening exercise couldn't load." />;
   }
 
-  const { lesson } = lessonQuery.data;
+  const { lesson } = view;
   const items = lesson.items ?? [];
 
   return (

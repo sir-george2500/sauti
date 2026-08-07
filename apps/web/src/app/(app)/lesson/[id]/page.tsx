@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { use } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getLesson, postAttempt } from "@/lib/api/endpoints";
+import { getRoadmap, lessonFromRoadmap, postAttempt } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
 import { Markdown } from "@/components/Markdown";
 import { Mcq } from "@/components/Mcq";
@@ -22,20 +22,20 @@ const VOICES = ["Diane", "Emmanuel"] as const;
 
 export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const lessonQuery = useQuery({
-    queryKey: ["lesson", id],
-    queryFn: () => getLesson(id),
-  });
+  // Lesson content lives inside the roadmap payload; sharing the ["roadmap"]
+  // key with the sidebar and other screens means one fetch serves all of them.
+  const roadmapQuery = useQuery({ queryKey: ["roadmap"], queryFn: getRoadmap });
+  const view = roadmapQuery.data ? lessonFromRoadmap(roadmapQuery.data, id) : null;
 
   // Quick-check answers are recorded as read-mode attempts so the item feeds SRS.
   const attempt = useMutation({ mutationFn: postAttempt });
 
-  if (lessonQuery.isPending) return <LoadingNote label="Opening the lesson…" />;
-  if (lessonQuery.isError || !lessonQuery.data) {
+  if (roadmapQuery.isPending) return <LoadingNote label="Opening the lesson…" />;
+  if (roadmapQuery.isError || !view) {
     return <ErrorNote message="This lesson couldn't load. Head back to the roadmap and try again." />;
   }
 
-  const { lesson, unitTitle, levelCefr, lessonNumber, lessonCount } = lessonQuery.data;
+  const { lesson, unitTitle, levelCefr, lessonNumber, lessonCount } = view;
   const items = lesson.items ?? [];
   const situationTag = items[0]?.tags?.[0];
 

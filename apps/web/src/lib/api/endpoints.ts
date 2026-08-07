@@ -57,19 +57,24 @@ export const getVocabDeck = (tag: string) =>
   apiFetch<VocabDeckItemsResponse>(`/vocab/decks/${encodeURIComponent(tag)}`);
 export const getScenarios = () => apiFetch<Scenario[]>("/scenarios");
 
-/**
- * SPEC §5 has no lesson-detail endpoint; lesson content is read out of the
- * roadmap payload (see docs/frontend-notes.md). Swap this implementation for
- * a dedicated fetch if the backend adds GET /lessons/{id}.
- */
-export async function getLesson(lessonId: string): Promise<{
+export interface LessonView {
   lesson: RoadmapLesson;
   unitTitle: string;
   levelCefr: string;
   lessonNumber: number;
   lessonCount: number;
-} | null> {
-  const roadmap = await getRoadmap();
+}
+
+/**
+ * SPEC §5 has no lesson-detail endpoint; lesson content is read out of the
+ * roadmap payload (see docs/frontend-notes.md). Pure so pages can derive it
+ * from the shared ["roadmap"] react-query cache instead of re-fetching the
+ * (expensive) roadmap per screen.
+ */
+export function lessonFromRoadmap(
+  roadmap: RoadmapResponse,
+  lessonId: string,
+): LessonView | null {
   for (const level of roadmap.levels) {
     for (const unit of level.units) {
       const idx = unit.lessons.findIndex((l) => l.id === lessonId);
@@ -87,13 +92,17 @@ export async function getLesson(lessonId: string): Promise<{
   return null;
 }
 
+/** See lessonFromRoadmap — kept for callers outside a roadmap query. */
+export async function getLesson(lessonId: string): Promise<LessonView | null> {
+  return lessonFromRoadmap(await getRoadmap(), lessonId);
+}
+
 /**
  * SPEC §5 has no item-detail endpoint either; the pronunciation screen needs
  * the target sentence for an item id, so it is looked up from the roadmap's
  * embedded lesson items (see docs/frontend-notes.md).
  */
-export async function findItem(itemId: string): Promise<Item | null> {
-  const roadmap = await getRoadmap();
+export function itemFromRoadmap(roadmap: RoadmapResponse, itemId: string): Item | null {
   for (const level of roadmap.levels) {
     for (const unit of level.units) {
       for (const lesson of unit.lessons) {
@@ -103,6 +112,11 @@ export async function findItem(itemId: string): Promise<Item | null> {
     }
   }
   return null;
+}
+
+/** See itemFromRoadmap — kept for callers outside a roadmap query. */
+export async function findItem(itemId: string): Promise<Item | null> {
+  return itemFromRoadmap(await getRoadmap(), itemId);
 }
 
 // --- Attempts / SRS ---------------------------------------------------------

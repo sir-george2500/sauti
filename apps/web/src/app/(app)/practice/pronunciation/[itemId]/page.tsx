@@ -2,7 +2,14 @@
 
 import { use, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { findItem, getUploadUrl, postAttempt, scoreSpeech, uploadAudio } from "@/lib/api/endpoints";
+import {
+  getRoadmap,
+  getUploadUrl,
+  itemFromRoadmap,
+  postAttempt,
+  scoreSpeech,
+  uploadAudio,
+} from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
 import { Card, CardLabel, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
 import type { PronReport } from "@/lib/api/types";
@@ -34,7 +41,10 @@ export default function PronunciationPage({
   params: Promise<{ itemId: string }>;
 }) {
   const { itemId } = use(params);
-  const itemQuery = useQuery({ queryKey: ["item", itemId], queryFn: () => findItem(itemId) });
+  // The item lives in the roadmap payload — share the ["roadmap"] cache
+  // rather than fetching the heavy roadmap once more for one sentence.
+  const roadmapQuery = useQuery({ queryKey: ["roadmap"], queryFn: getRoadmap });
+  const item = roadmapQuery.data ? itemFromRoadmap(roadmapQuery.data, itemId) : null;
 
   const [recording, setRecording] = useState(false);
   const [scoring, setScoring] = useState(false);
@@ -96,12 +106,11 @@ export default function PronunciationPage({
     }
   };
 
-  if (itemQuery.isPending) return <LoadingNote label="Fetching the phrase…" />;
-  if (itemQuery.isError || !itemQuery.data) {
+  if (roadmapQuery.isPending) return <LoadingNote label="Fetching the phrase…" />;
+  if (roadmapQuery.isError || !item) {
     return <ErrorNote message="That phrase couldn't be found. Head back and pick another." />;
   }
 
-  const item = itemQuery.data;
   const overall = report ? Math.round(report.overall) : null;
   const scoreTone = overall !== null && overall >= 70 ? "text-green" : "text-gold-text";
   const scoreRing = overall !== null && overall >= 70 ? "border-green" : "border-gold";

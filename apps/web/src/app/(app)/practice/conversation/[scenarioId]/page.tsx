@@ -129,6 +129,24 @@ function ConversationChat({ scenario }: { scenario: Scenario }) {
           coachTitle: msg.coach?.title ?? "Coach",
           coachKind: msg.coach?.kind ?? "fix",
         });
+      } else if (msg.type === "partner_audio") {
+        // Real speech backend: audio for the latest partner turn arrives in a
+        // follow-up frame once synthesis lands. Attach it to the newest
+        // partner entry that is still silent; the autoplay effect picks it up.
+        const url = msg.audio_url;
+        if (url) {
+          setEntries((prev) => {
+            for (let i = prev.length - 1; i >= 0; i--) {
+              if (prev[i].role === "partner") {
+                if (prev[i].audioUrl) return prev;
+                const next = prev.slice();
+                next[i] = { ...next[i], audioUrl: url };
+                return next;
+              }
+            }
+            return prev;
+          });
+        }
       } else if (msg.type === "goal") {
         setGoalsMet((prev) => (prev.includes(msg.text) ? prev : [...prev, msg.text]));
       } else if (msg.type === "error") {

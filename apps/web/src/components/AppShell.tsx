@@ -22,6 +22,13 @@ const COURSES: { code: string; label: string }[] = [
  *  for longer — the shell never needs second-by-second accuracy. */
 const SHELL_STALE = { staleTime: 300_000 };
 
+/** Progress and vocab-deck data are nice-to-haves in the shell (rhythm pill,
+ *  due badge, hour totals). They render from whatever the pages have already
+ *  cached but never trigger their own fetch: the API's multi-query endpoints
+ *  are expensive against the remote DB, and a hard reload of a lesson page
+ *  must spend its bandwidth on the lesson, not sidebar garnish. */
+const CACHE_ONLY = { staleTime: Infinity, enabled: false } as const;
+
 function Wordmark() {
   return (
     <div className="px-[26px] pt-[26px] pb-[18px]">
@@ -117,7 +124,7 @@ function NavRow({ item, pathname }: { item: NavItem; pathname: string }) {
 function SidebarNav() {
   const pathname = usePathname();
   const roadmap = useQuery({ queryKey: ["roadmap"], queryFn: getRoadmap, ...SHELL_STALE });
-  const decks = useQuery({ queryKey: ["vocab-decks"], queryFn: getVocabDecks, ...SHELL_STALE });
+  const decks = useQuery({ queryKey: ["vocab-decks"], queryFn: getVocabDecks, ...CACHE_ONLY });
   const scenarios = useQuery({ queryKey: ["scenarios"], queryFn: getScenarios, ...SHELL_STALE });
 
   const current = roadmap.data?.current;
@@ -216,7 +223,7 @@ function SidebarNav() {
 function SidebarFooter() {
   const { me, signOut } = useAuth();
   const router = useRouter();
-  const progress = useQuery({ queryKey: ["progress"], queryFn: getProgress, ...SHELL_STALE });
+  const progress = useQuery({ queryKey: ["progress"], queryFn: getProgress, ...CACHE_ONLY });
 
   const gamification = me?.profile?.gamification ?? "light";
   const consistency = progress.data?.consistency;
