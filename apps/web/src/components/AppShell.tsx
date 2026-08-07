@@ -11,6 +11,7 @@ import {
   getVocabDecks,
 } from "@/lib/api/endpoints";
 import { greetingName, RequireAuth, useAuth } from "@/lib/auth";
+import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
 
 const COURSES: { code: string; label: string }[] = [
   { code: "KIN", label: "Ikinyarwanda" },
@@ -284,6 +285,7 @@ function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col lg:overflow-y-auto">
         <MobileTopBar />
+        <VerifyEmailBanner />
         <main className="mx-auto w-full max-w-[940px] px-5 pt-8 pb-24 sm:px-8 lg:px-12 lg:pt-[46px]">
           {children}
         </main>
