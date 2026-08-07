@@ -19,6 +19,19 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class VerifyEmailIn(BaseModel):
+    token: str = Field(min_length=16, max_length=128)
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=16, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ProfileOut(BaseModel):
     course_id: uuid.UUID
     course_code: str
@@ -35,6 +48,7 @@ class UserOut(BaseModel):
 class MeOut(BaseModel):
     user: UserOut
     profile: ProfileOut | None = None
+    email_verified: bool = False
 
 
 class TokenOut(BaseModel):

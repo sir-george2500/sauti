@@ -10,22 +10,33 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy import select, update
 
-from sauti.deps import DbDep, SettingsDep, auth_rate_limit
+from sauti.deps import CurrentUser, DbDep, MailerDep, SettingsDep, auth_rate_limit
 from sauti.errors import ApiError
-from sauti.models import Course, Profile, RefreshToken, User
-from sauti.schemas.auth import LoginIn, MeOut, ProfileOut, RegisterIn, TokenOut, UserOut
+from sauti.models import Course, EmailVerificationToken, Profile, RefreshToken, User
+from sauti.schemas.auth import (
+    LoginIn,
+    MeOut,
+    ProfileOut,
+    RegisterIn,
+    TokenOut,
+    UserOut,
+    VerifyEmailIn,
+)
 from sauti.security import (
     COMMON_PASSWORDS,
     DUMMY_PASSWORD_HASH,
+    hash_email_token,
     hash_password,
     hash_refresh_token,
     mint_access_token,
+    new_email_token,
     new_refresh_token,
     verify_password,
 )
+from sauti.services.mail import send_mail_safely
 
 router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(auth_rate_limit)])
 
@@ -63,6 +74,44 @@ def _clear_refresh_cookie(response: Response, settings) -> None:
     )
 
 
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _mint_verification(db, settings, user_id: uuid.UUID) -> str:
+    """Add an EmailVerificationToken row (hash at rest) and return the raw
+    token for the emailed link. Caller commits."""
+    raw, token_hash = new_email_token()
+    db.add(
+        EmailVerificationToken(
+            user_id=user_id,
+            token_hash=token_hash,
+            expires_at=_utcnow() + timedelta(hours=settings.verify_token_ttl_hours),
+        )
+    )
+    return raw
+
+
+def _queue_verification_mail(
+    background: BackgroundTasks, mailer, settings, email: str, raw_token: str
+) -> None:
+    link = f"{settings.app_frontend_url}/verify-email?token={raw_token}"
+    background.add_task(
+        send_mail_safely,
+        mailer,
+        to=email,
+        subject="Verify your email — Sauti",
+        text=(
+            "Muraho!\n\n"
+            "Confirm this address to secure your Sauti account:\n\n"
+            f"{link}\n\n"
+            f"The link works for {settings.verify_token_ttl_hours} hours. "
+            "If you didn't create a Sauti account, ignore this email.\n\n"
+            "— Sauti"
+        ),
+    )
+
+
 async def _issue_tokens(
     db, settings, response: Response, user: User, family_id: uuid.UUID | None = None
 ) -> str:
@@ -81,7 +130,13 @@ async def _issue_tokens(
 
 
 @router.post("/register", status_code=201)
-async def register(body: RegisterIn, db: DbDep, settings: SettingsDep) -> dict:
+async def register(
+    body: RegisterIn,
+    db: DbDep,
+    settings: SettingsDep,
+    mailer: MailerDep,
+    background: BackgroundTasks,
+) -> dict:
     if body.password.lower() in COMMON_PASSWORDS:
         raise ApiError(422, "WEAK_PASSWORD", "That password is too common — pick another")
     existing = await db.scalar(select(User).where(User.email == body.email.lower()))
@@ -100,8 +155,58 @@ async def register(body: RegisterIn, db: DbDep, settings: SettingsDep) -> dict:
             pace_hours_week=body.pace_hours_week,
         )
     )
+    raw_token = _mint_verification(db, settings, user.id)
     await db.commit()
+    # Mail goes out AFTER the response: registration never waits on (or
+    # fails because of) SMTP — verification is a nudge, not a gate.
+    _queue_verification_mail(background, mailer, settings, user.email, raw_token)
     return {"user": UserOut(id=user.id, email=user.email).model_dump(mode="json")}
+
+
+@router.post("/verify-email")
+async def verify_email(body: VerifyEmailIn, db: DbDep) -> dict:
+    row = await db.scalar(
+        select(EmailVerificationToken).where(
+            EmailVerificationToken.token_hash == hash_email_token(body.token)
+        )
+    )
+    if row is None:
+        raise ApiError(400, "INVALID_TOKEN", "That verification link isn't valid — request a new one.")
+    if row.used_at is not None:
+        raise ApiError(410, "TOKEN_USED", "That verification link was already used.")
+    if _aware(row.expires_at) <= _utcnow():
+        raise ApiError(410, "TOKEN_EXPIRED", "That verification link has expired — request a new one.")
+    now = _utcnow()
+    row.used_at = now
+    await db.execute(
+        update(User)
+        .where(User.id == row.user_id, User.email_verified_at.is_(None))
+        .values(email_verified_at=now)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/resend-verification")
+async def resend_verification(
+    request: Request,
+    user: CurrentUser,
+    db: DbDep,
+    settings: SettingsDep,
+    mailer: MailerDep,
+    background: BackgroundTasks,
+) -> dict:
+    # Tighter per-user cap on top of the router-wide auth limit — this
+    # endpoint sends real mail.
+    request.app.state.rate_limiter.enforce(
+        f"email:u:{user.id}", settings.rate_limit_email_max
+    )
+    if user.email_verified_at is None:
+        raw_token = _mint_verification(db, settings, user.id)
+        await db.commit()
+        _queue_verification_mail(background, mailer, settings, user.email, raw_token)
+    # Already verified: same generic 200 no-op — nothing to learn here.
+    return {"ok": True}
 
 
 @router.post("/login")

@@ -16,6 +16,9 @@ class User(TimestampedBase):
 
     email: Mapped[str] = mapped_column(Text, unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
+    # Verification is NON-blocking: unverified users keep full access, the
+    # frontend just nudges them with a banner until this is set.
+    email_verified_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     profile: Mapped[Profile | None] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"

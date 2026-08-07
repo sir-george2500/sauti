@@ -69,3 +69,9 @@ def new_refresh_token() -> tuple[str, str]:
 
 def hash_refresh_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("ascii")).hexdigest()
+
+
+# Email verification / password-reset tokens share the exact discipline:
+# 32 random bytes, base64url on the wire, SHA-256 hex at rest.
+new_email_token = new_refresh_token
+hash_email_token = hash_refresh_token

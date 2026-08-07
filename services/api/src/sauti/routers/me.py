@@ -23,4 +23,8 @@ async def me(user: CurrentUser, db: DbDep) -> MeOut:
             placed_level=profile.placed_level,
             gamification=profile.gamification,
         )
-    return MeOut(user=UserOut(id=user.id, email=user.email), profile=profile_out)
+    return MeOut(
+        user=UserOut(id=user.id, email=user.email),
+        profile=profile_out,
+        email_verified=user.email_verified_at is not None,
+    )
