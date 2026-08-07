@@ -7,6 +7,7 @@ import { login } from "@/lib/api/endpoints";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
 import { ErrorNote } from "@/components/ui";
+import { validateEmail, validateLoginPassword } from "@/lib/validate";
 
 function LoginForm() {
   const router = useRouter();
@@ -14,11 +15,20 @@ function LoginForm() {
   const { refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const emailError = validateEmail(email);
+  const passwordError = validateLoginPassword(password);
+  const formValid = !emailError && !passwordError;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formValid) {
+      setTouched({ email: true, password: true });
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -49,11 +59,21 @@ function LoginForm() {
           type="email"
           required
           autoComplete="email"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+          aria-invalid={touched.email && !!emailError}
           data-testid="login-email"
-          className="rounded-xl border border-line bg-card px-4 py-3 outline-none focus:border-accent"
+          className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
+            touched.email && emailError ? "border-red-400" : "border-line"
+          }`}
         />
+        {touched.email && emailError ? (
+          <span className="text-xs text-red-600" data-testid="login-email-error">
+            {emailError}
+          </span>
+        ) : null}
       </label>
       <label className="grid gap-1.5">
         <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
@@ -63,15 +83,25 @@ function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
+          placeholder="Your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+          aria-invalid={touched.password && !!passwordError}
           data-testid="login-password"
-          className="rounded-xl border border-line bg-card px-4 py-3 outline-none focus:border-accent"
+          className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
+            touched.password && passwordError ? "border-red-400" : "border-line"
+          }`}
         />
+        {touched.password && passwordError ? (
+          <span className="text-xs text-red-600" data-testid="login-password-error">
+            {passwordError}
+          </span>
+        ) : null}
       </label>
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || (!formValid && (touched.email || touched.password))}
         data-testid="login-submit"
         className="mt-2 rounded-full bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-60"
       >

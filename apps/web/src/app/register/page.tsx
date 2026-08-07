@@ -8,6 +8,7 @@ import { getCourses, login, register } from "@/lib/api/endpoints";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth";
 import { ErrorNote } from "@/components/ui";
+import { validateEmail, validatePassword } from "@/lib/validate";
 import type { CourseCode } from "@/lib/api/types";
 
 const FALLBACK_COURSES = [
@@ -31,8 +32,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [courseCode, setCourseCode] = useState<CourseCode>("KIN");
   const [pace, setPace] = useState(5);
+  const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const emailError = validateEmail(email);
+  const passwordError = validatePassword(password);
+  const formValid = !emailError && !passwordError;
 
   const courses =
     coursesQuery.data && coursesQuery.data.length > 0
@@ -41,6 +47,10 @@ export default function RegisterPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formValid) {
+      setTouched({ email: true, password: true });
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -138,11 +148,21 @@ export default function RegisterPage() {
             type="email"
             required
             autoComplete="email"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+            aria-invalid={touched.email && !!emailError}
             data-testid="register-email"
-            className="rounded-xl border border-line bg-card px-4 py-3 outline-none focus:border-accent"
+            className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
+              touched.email && emailError ? "border-red-400" : "border-line"
+            }`}
           />
+          {touched.email && emailError ? (
+            <span className="text-xs text-red-600" data-testid="register-email-error">
+              {emailError}
+            </span>
+          ) : null}
         </label>
         <label className="grid gap-1.5">
           <span className="text-xs font-semibold tracking-[0.14em] text-ink-soft uppercase">
@@ -153,16 +173,30 @@ export default function RegisterPage() {
             required
             minLength={8}
             autoComplete="new-password"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+            aria-invalid={touched.password && !!passwordError}
             data-testid="register-password"
-            className="rounded-xl border border-line bg-card px-4 py-3 outline-none focus:border-accent"
+            className={`rounded-xl border bg-card px-4 py-3 outline-none placeholder:text-ink-soft/50 focus:border-accent ${
+              touched.password && passwordError ? "border-red-400" : "border-line"
+            }`}
           />
+          {touched.password && passwordError ? (
+            <span className="text-xs text-red-600" data-testid="register-password-error">
+              {passwordError}
+            </span>
+          ) : (
+            <span className="text-xs text-ink-soft">
+              At least 8 characters — avoid the obvious ones.
+            </span>
+          )}
         </label>
 
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || (!formValid && (touched.email || touched.password))}
           data-testid="register-submit"
           className="mt-1 rounded-full bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep disabled:opacity-60"
         >
