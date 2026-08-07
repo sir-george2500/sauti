@@ -46,6 +46,9 @@ async def main(course_code: str = "KIN") -> None:
         cache=cache,
     )
 
+    known = await cache.preload()
+    print(f"preloaded {known} cached phrases")
+
     async with maker() as db:
         items = list(
             await db.scalars(

@@ -66,6 +66,20 @@ class CloudinaryAudioCache:
     def local_ref(self, key: str) -> str:
         return f"tts-{key}.wav"
 
+    async def preload(self) -> int:
+        """Bulk-load every known key -> url into the in-process cache (one query
+        instead of one per phrase — the DB is a remote pooler). Best-effort."""
+        if self._sessionmaker is None:
+            return 0
+        try:
+            async with self._sessionmaker() as db:
+                rows = list(await db.scalars(select(TtsCache)))
+        except Exception:  # noqa: BLE001
+            return 0
+        for row in rows:
+            self._mem.setdefault(row.key, row.url)
+        return len(rows)
+
     async def get_or_create(self, key_text: str, voice: str, synth_fn: SynthFn) -> str:
         key = cache_key(voice, key_text)
 
