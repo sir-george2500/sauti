@@ -75,6 +75,9 @@ export default defineConfig({
       env: {
         SAUTI_FAKE_AI: "1",
         RATE_LIMIT_AUTH_MAX: "100000",
+        // forgot-password / resend-verification share one per-IP/user email
+        // cap — the parallel suite would trip the production default of 5.
+        RATE_LIMIT_EMAIL_MAX: "100000",
       },
     },
     {
