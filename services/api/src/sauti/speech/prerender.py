@@ -9,8 +9,11 @@ skipped by the cache itself, so re-running is cheap and idempotent.
 from __future__ import annotations
 
 import asyncio
+import functools
 import sys
 import time
+
+print = functools.partial(print, flush=True)  # progress must show through a pipe
 
 from sqlalchemy import select
 
