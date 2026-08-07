@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
     sauti_fake_ai: bool = False
 
+    # Real speech stack (SAUTI_FAKE_AI=0): rent-rwanda voice service (YourTTS
+    # Kinyarwanda / Kokoro English) + Cloudinary as the synthesize-once cache.
+    # Empty VOICE_SERVICE_URL keeps the deterministic stub backend.
+    voice_service_url: str = ""
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
     app_base_url: str = "http://localhost:8000"
     app_frontend_url: str = "http://localhost:3000"
 
