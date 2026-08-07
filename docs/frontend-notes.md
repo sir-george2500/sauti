@@ -22,6 +22,21 @@ backend lands a different shape, update that file + this list together.
 4. **No hint endpoint.** The conversation "Stuck? Try:" chips are a static
    phrase list appropriate to the market scenario.
 
+## Backend additions (2026-08)
+
+- **`items[].audio_url`** (roadmap embedded lessons AND `/vocab/decks/{tag}`):
+  the cached Cloudinary TTS URL, playable directly as an `<audio>` src — no
+  `GET /tts/{item_id}` round trip. `null` when not yet cached; fall back to
+  the `/tts` route then. Resolved server-side with one bulk query per request.
+- **`lesson.quiz`**: 4–6 questions per KIN lesson —
+  `[{ord, kind: "grammar"|"vocab"|"usage"|"culture", question,
+  options: [{text, correct}], explanation, item_id?}]`. `explanation` is the
+  one-sentence WHY to show after answering. Post one attempt per question
+  (`mode: "read"`, score 1/0) against `item_id`, or the lesson's first item
+  when `item_id` is null. `quick_check` remains populated (it mirrors
+  `quiz[0]`) for rollout compatibility; skeleton courses (SWA/FRA) have
+  `quiz: []` and keep the derived quick_check.
+
 ## Shape choices within §5
 
 - **`POST /attempts` response** is read as the updated `SrsState` itself with
