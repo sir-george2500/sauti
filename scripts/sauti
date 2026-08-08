@@ -169,12 +169,33 @@ need_dirs() { mkdir -p "$RUN_DIR" "$LOG_DIR"; }
 # already running" for the entire study session.
 readonly LOCK_FD=9
 
+# "pid (name)" for every process holding the lockfile open. Always our own
+# processes, so /proc is readable.
+lock_holders() {
+  local fd pid out=""
+  for fd in /proc/[0-9]*/fd/*; do
+    [[ "$(readlink "$fd" 2>/dev/null)" == "$LOCK_FILE" ]] || continue
+    pid="${fd#/proc/}"; pid="${pid%%/*}"
+    # Skip ourselves — both the script and the command-substitution subshell
+    # this runs in, which inherited the very fd we are looking for.
+    [[ "$pid" == "$$" || "$pid" == "$BASHPID" ]] && continue
+    local name; name="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | cut -c1-60)"
+    out+="${out:+, }$pid (${name:-?})"
+  done
+  printf '%s' "$out"
+}
+
 acquire_lock() {
   need_dirs
   exec 9>"$LOCK_FILE"
   if ! flock -n 9; then
+    # Naming the holder turns "why is this refusing me?" into one line. It is
+    # usually a sauti command still running; a stray process here means
+    # something inherited the fd and should be killed.
+    local holders; holders="$(lock_holders)"
     die_hint "another sauti command is already running." \
              "Lock: $LOCK_FILE" \
+             "Held by: ${holders:-unknown}" \
              "Wait for it to finish, or check with: sauti status"
   fi
 }
