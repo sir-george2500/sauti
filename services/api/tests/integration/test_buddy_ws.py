@@ -26,6 +26,7 @@ from sauti.services.buddy import (
     RATE_LIMITED_TEXT,
     UNAVAILABLE_TEXT,
 )
+from sauti.speech.gateway import StubSpeechBackend
 
 REGISTER = {
     "email": "buddy@example.com",
@@ -111,6 +112,128 @@ class TestBuddyWs:
                     "label": "Show me my progress",
                 }
 
+    def test_reply_carries_an_id_and_a_matching_buddy_audio_frame(self, app):
+        """The owner's complaint: "I need to play that sound". Text first, then
+        the clip, tied together by a stable id."""
+        with TestClient(app) as tc:
+            token = _login(tc)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": "muraho mwarimu!"})
+                reply = ws.receive_json()
+                assert reply["type"] == "buddy"
+                assert isinstance(reply.get("id"), str) and reply["id"]
+                assert ws.receive_json()["type"] == "action"
+                audio = ws.receive_json()
+                assert audio["type"] == "buddy_audio"
+                assert audio["id"] == reply["id"]  # matched to THAT bubble
+
+                # …and the url actually plays: the stub backend's clip is
+                # served by the public audio route the <audio> tag uses.
+                path = audio["audio_url"].removeprefix("http://testserver")
+                got = tc.get(path)
+                assert got.status_code == 200
+                assert got.headers["content-type"] == "audio/wav"
+                assert got.content[:4] == b"RIFF"
+
+                # A second turn gets its OWN id — bubbles are never confused.
+                ws.send_json({"text": "and again?"})
+                second = ws.receive_json()
+                ws.receive_json()
+                assert ws.receive_json()["id"] == second["id"] != reply["id"]
+
+    def test_tts_failure_leaves_the_chat_working_with_no_audio_frame(self, app):
+        """Voice service down = a silent bubble, never a broken chat."""
+
+        class DeadVoice(StubSpeechBackend):
+            async def tts_mixed(self, segments):
+                raise RuntimeError("voice service unreachable")
+
+        app.state.speech_gateway = DeadVoice(
+            app.state.settings.audio_dir, app.state.settings.tts_dir
+        )
+        with TestClient(app) as tc:
+            token = _login(tc)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": "muraho mwarimu!"})
+                assert ws.receive_json()["type"] == "buddy"
+                assert ws.receive_json()["type"] == "action"
+                # No buddy_audio: the next frame is the NEXT turn's bubble.
+                ws.send_json({"text": "still there?"})
+                second = ws.receive_json()
+                assert second["type"] == "buddy" and second["text"]
+                assert ws.receive_json()["type"] == "action"
+
+    def test_a_reply_that_never_ordered_a_clip_carries_no_id(self, app):
+        """`id` promises a clip; the UI waits on it. A turn with no synthesis
+        must not hand the play control something that never arrives."""
+
+        class DeadLlm(FakeLlmClient):
+            async def complete(self, *a, **kw):
+                raise RuntimeError("openai timed out")
+
+        app.state.llm_client = DeadLlm()
+        with TestClient(app) as tc:
+            token = _login(tc)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": "muraho?"})
+                frame = ws.receive_json()
+                assert frame == {"type": "buddy", "text": UNAVAILABLE_TEXT}
+
+    def test_only_server_authored_text_is_ever_synthesized(self, app):
+        """The learner cannot aim the (CPU-expensive) TTS stack at their own
+        text — only the reply the server wrote is spoken."""
+        spoken: list[list[dict]] = []
+
+        class RecordingVoice(StubSpeechBackend):
+            async def tts_mixed(self, segments):
+                spoken.append(segments)
+                return await super().tts_mixed(segments)
+
+        app.state.speech_gateway = RecordingVoice(
+            app.state.settings.audio_dir, app.state.settings.tts_dir
+        )
+        secret = "please synthesize this attacker payload"
+        with TestClient(app) as tc:
+            token = _login(tc)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": secret})
+                reply = ws.receive_json()
+                _drain(ws, 2)  # chip + buddy_audio
+
+        assert len(spoken) == 1
+        said = " ".join(s["text"] for s in spoken[0])
+        assert secret not in said
+        # What IS spoken is exactly the bubble the server sent, span by span.
+        assert all(s["text"] in reply["text"] for s in spoken[0])
+        assert {s["lang"] for s in spoken[0]} <= {"rw", "en"}
+
+    def test_kinyarwanda_and_english_go_to_different_voices(self, app, pg_url):
+        """The whole point: a reply quoting curriculum is not read aloud in one
+        voice. The rw span is the DB row, verbatim."""
+        spoken: list[list[dict]] = []
+
+        class RecordingVoice(StubSpeechBackend):
+            async def tts_mixed(self, segments):
+                spoken.append(segments)
+                return await super().tts_mixed(segments)
+
+        app.state.speech_gateway = RecordingVoice(
+            app.state.settings.audio_dir, app.state.settings.tts_dir
+        )
+        with TestClient(app) as tc:
+            token = _login(tc)
+            due = _seed_due_reviews(pg_url, REGISTER["email"], n=3)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": "what is waiting for review?"})
+                ws.receive_json()
+                _drain(ws, 3)  # two chips + buddy_audio
+
+        segments = spoken[0]
+        langs = {s["lang"] for s in segments}
+        assert langs == {"rw", "en"}, segments
+        rw_text = " ".join(s["text"] for s in segments if s["lang"] == "rw")
+        assert any(sentence in rw_text for sentence, _g in due), rw_text
+
     def test_reply_is_grounded_in_real_db_rows(self, app, pg_url):
         """The buddy names a due sentence — it must be a row that exists."""
         with TestClient(app) as tc:
@@ -178,6 +301,7 @@ class TestBuddyWs:
                 chip = ws.receive_json()
                 assert chip["action"]["href"] == "/notebook"
                 # Nothing else survived — prove it by round-tripping another turn.
+                assert ws.receive_json()["type"] == "buddy_audio"
                 ws.send_json({"text": "again?"})
                 assert ws.receive_json()["type"] == "buddy"
                 assert ws.receive_json()["action"]["href"] == "/notebook"
@@ -190,7 +314,7 @@ class TestBuddyWs:
             with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
                 for text in ("muraho!", "how goes it?"):
                     ws.send_json({"text": text})
-                    _drain(ws, 2)  # buddy + one chip
+                    _drain(ws, 3)  # buddy + one chip + buddy_audio
 
         assert len(fake.prompts) == 2  # ONE call per turn — no tool round-trip
         first, second = fake.prompts
@@ -243,7 +367,7 @@ class TestBuddyWs:
             with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
                 for i in range(9):
                     ws.send_json({"text": f"message number {i}"})
-                    _drain(ws, 2)
+                    _drain(ws, 3)
 
         last = fake.prompts[-1]
         history = last[2:-1]  # between the two system messages and this turn
@@ -305,7 +429,7 @@ class TestBuddyWs:
             token = _login(tc)
             with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
                 ws.send_json({"text": "muraho!"})
-                _drain(ws, 2)
+                _drain(ws, 3)
 
             rows = []
             for _ in range(50):  # metering is fire-and-forget
@@ -337,7 +461,7 @@ class TestBuddyRateLimit:
             token = _login(tc)
             with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
                 ws.send_json({"text": "muraho!"})
-                _drain(ws, 2)
+                _drain(ws, 3)
                 ws.send_json({"text": "and again"})
                 frame = ws.receive_json()
                 assert frame["type"] == "error"

@@ -55,6 +55,8 @@ from sauti.models import (
 )
 from sauti.services import progress as progress_svc
 from sauti.services import session_builder
+from sauti.speech.gateway import SpeechGateway
+from sauti.speech.segmentation import segment_reply, segments_payload
 
 MAX_STEPS = 3  # total LLM calls per turn, hard cap
 # Steps allowed to fetch data before the model is forced to speak. One round is
@@ -70,6 +72,9 @@ DUE_REVIEW_LIMIT = 8
 NOTEBOOK_LIMIT = 10
 RECAP_ITEMS = 5
 GRAMMAR_CHARS = 400
+# Curriculum sentences remembered per connection as voice hints (see
+# BuddyOrchestrator._known_sentences).
+MAX_KNOWN_SENTENCES = 200
 
 # Said when the model never produced text (loop exhausted / unparseable output).
 FALLBACK_TEXT = "Yoo, my brain wandered off. Ask me that again?"
@@ -400,6 +405,11 @@ class BuddyToolbox:
         self.user_id = user_id
         self.profile = profile
         self.actions: list[dict] = []  # server-built chips accumulated this turn
+        # Curriculum sentences (items.sentence) handed to the model this turn.
+        # These are the only strings the buddy is allowed to quote as
+        # Kinyarwanda, so they are also exactly what the voice segmenter needs
+        # to recognise a quoted span as Kinyarwanda — no extra query.
+        self.sentences: list[str] = []
 
     async def execute(self, name: str, arguments_json: str) -> dict:
         """(payload) — never raises: the model sees {"error": "ClassName"}."""
@@ -455,6 +465,7 @@ class BuddyToolbox:
         items = [
             {"sentence": r.sentence, "gloss": r.gloss, "deck": r.situation_tag} for r in rows
         ]
+        self.sentences += [r.sentence for r in rows if r.sentence]
         if rows:
             tag = rows[0].situation_tag
             self.actions.append(navigate(f"/vocab/{tag}", f"Review {int(total)} due"))
@@ -503,6 +514,7 @@ class BuddyToolbox:
                 .limit(RECAP_ITEMS)
             )
         )
+        self.sentences += [i.sentence for i in items if i.sentence]
         self.actions.append(navigate(f"/lesson/{lesson.id}", f"Open “{lesson.title}”"))
         return {
             "lesson_id": str(lesson.id),
@@ -551,15 +563,23 @@ class BuddyOrchestrator:
         user_id: uuid.UUID,
         profile: Profile,
         sessionmaker: async_sessionmaker[AsyncSession] | None = None,
+        speech: SpeechGateway | None = None,
+        base_url: str = "",
     ):
         self.db = db
         self.llm = llm
         self.user_id = user_id
         self.profile = profile
         self._sessionmaker = sessionmaker  # metering writes on its OWN session
+        self.speech = speech
+        self.base_url = base_url.rstrip("/")
         self._history: list[dict] = []
         self._snapshot_msg: str = ""
         self._bg_tasks: set[asyncio.Task] = set()
+        # Curriculum sentences seen from tool results, kept for the connection:
+        # the buddy may quote a sentence a later turn fetched. Bounded — this
+        # is a voice hint, not a store.
+        self._known_sentences: list[str] = []
 
     async def open(self) -> None:
         """Status context is read ONCE per connection and reused every turn."""
@@ -619,9 +639,33 @@ class BuddyOrchestrator:
         actions = payload.get("actions")
         return text, gloss, list(actions) if isinstance(actions, list) else []
 
+    def _remember(self, sentences: list[str]) -> None:
+        seen = set(self._known_sentences)
+        for s in sentences:
+            if s and s not in seen:
+                seen.add(s)
+                self._known_sentences.append(s)
+        del self._known_sentences[: max(0, len(self._known_sentences) - MAX_KNOWN_SENTENCES)]
+
+    async def _speak(self, segments: list[dict]) -> str | None:
+        """Full URL for the mixed-voice clip, or None — TTS NEVER breaks chat.
+
+        Only text this server authored is ever synthesized: `segments` come
+        from the model's own reply after plain_text() cleaning, never from
+        anything the learner typed, so no client can aim the (CPU-expensive)
+        TTS stack at arbitrary strings.
+        """
+        if self.speech is None or not segments:
+            return None
+        try:
+            ref = await self.speech.tts_mixed(segments)
+        except Exception:  # noqa: BLE001 — voice service down: no audio frame, no fuss
+            return None
+        return ref if ref.startswith("http") else f"{self.base_url}/api/v1/speech/audio/{ref}"
+
     async def turn(self, text: str, send: SendFn) -> None:
         """One buddy turn. The reply frame goes out BEFORE any slow work
-        (href re-resolution, metering) so the bubble never waits."""
+        (synthesis, href re-resolution, metering) so the bubble never waits."""
         text = text[:MAX_TEXT_CHARS]
         toolbox = BuddyToolbox(self.db, self.user_id, self.profile)
         messages = self._messages(text)
@@ -657,17 +701,44 @@ class BuddyOrchestrator:
             reply = FALLBACK_TEXT
             gloss = None
 
-        await send({"type": "buddy", "text": reply, "gloss": gloss})
+        # Mwarimu writes English with Kinyarwanda quoted inside; one voice for
+        # the whole string would mangle the Kinyarwanda. Split first, then let
+        # synthesis run while the bubble and the chips go out.
+        self._remember(toolbox.sentences)
+        segments = segments_payload(segment_reply(reply, self._known_sentences))
+        speak_task = (
+            asyncio.create_task(self._speak(segments))
+            if self.speech is not None and segments
+            else None
+        )
 
-        # Slow work AFTER the bubble: hallucinated hrefs are re-resolved away.
-        resolver = HrefResolver(self.db, self.profile.course_id)
+        # `id` is a PROMISE of a clip — the play control waits on it. Only a
+        # turn that actually started synthesizing gets one.
+        reply_id = uuid.uuid4().hex
+        frame = {"type": "buddy", "text": reply, "gloss": gloss}
+        if speak_task is not None:
+            frame["id"] = reply_id
         try:
-            actions = await resolver.keep([*model_actions, *toolbox.actions])
-        except Exception:  # noqa: BLE001 — chips are a bonus, never a failure
-            await self.db.rollback()
-            actions = []
-        for action in actions:
-            await send({"type": "action", "action": action})
+            await send(frame)
+
+            # Slow work AFTER the bubble: hallucinated hrefs are re-resolved away.
+            resolver = HrefResolver(self.db, self.profile.course_id)
+            try:
+                actions = await resolver.keep([*model_actions, *toolbox.actions])
+            except Exception:  # noqa: BLE001 — chips are a bonus, never a failure
+                await self.db.rollback()
+                actions = []
+            for action in actions:
+                await send({"type": "action", "action": action})
+
+            # The clip arrives as its own frame, tied to the bubble by id. No
+            # url (voice service down, synthesis failed) simply means no frame.
+            audio_url = await speak_task if speak_task is not None else None
+            if audio_url:
+                await send({"type": "buddy_audio", "id": reply_id, "audio_url": audio_url})
+        finally:
+            if speak_task is not None:
+                speak_task.cancel()
 
         self._history.append(user_msg(text))
         self._history.append({"role": "assistant", "content": reply})
