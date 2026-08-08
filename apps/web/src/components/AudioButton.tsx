@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ttsUrl } from "@/lib/api/client";
+import { playExclusive, stopPlayback } from "@/lib/audio/player";
 
 /**
  * Play button for a curriculum item's native audio.
@@ -14,6 +15,9 @@ import { ttsUrl } from "@/lib/api/client";
  * Mockup treatment: circular 1.5px-outlined button; idle shows the outline
  * colour glyph on transparent, playing fills the circle. `tone="gold"` is
  * the variant used on dark (bark) surfaces.
+ *
+ * Playback itself runs through the app's single audio channel
+ * (`lib/audio/player`), so pressing one play button always silences another.
  */
 export function AudioButton({
   itemId,
@@ -36,36 +40,35 @@ export function AudioButton({
   size?: "sm" | "md" | "lg";
   className?: string;
 }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Identity for the shared channel, so this button only ever stops its own
+  // clip — and so a source change (review flows reuse one instance across
+  // cards) can't leave the previous card's audio running.
+  const ownerRef = useRef({});
   const [playing, setPlaying] = useState(false);
   const url = src || ttsUrl(itemId);
 
-  // The element is lazily created per source and must be dropped when it
-  // changes: review flows reuse this component instance across cards, and a
-  // cached element would keep replaying the first card's audio forever.
   useEffect(() => {
+    const owner = ownerRef.current;
     return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
+      stopPlayback(owner);
       setPlaying(false);
     };
   }, [url]);
 
   const toggle = () => {
     if (playing) {
-      audioRef.current?.pause();
+      stopPlayback(ownerRef.current);
       setPlaying(false);
       return;
     }
-    if (!audioRef.current) {
-      const audio = new Audio(url);
-      audio.addEventListener("ended", () => setPlaying(false));
-      audio.addEventListener("error", () => setPlaying(false));
-      audioRef.current = audio;
-    }
-    audioRef.current.playbackRate = slow ? 0.65 : 1;
-    void audioRef.current.play().catch(() => setPlaying(false));
     setPlaying(true);
+    void playExclusive(url, {
+      owner: ownerRef.current,
+      rate: slow ? 0.65 : 1,
+      onStop: () => setPlaying(false),
+    }).then((started) => {
+      if (!started) setPlaying(false);
+    });
   };
 
   const dim = size === "lg" ? "h-11 w-11" : size === "sm" ? "h-[34px] w-[34px]" : "h-9 w-9";
