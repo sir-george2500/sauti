@@ -26,6 +26,13 @@ export interface Profile {
   placed_level?: Cefr | null;
   gamification?: "light" | "structured";
   display_name?: string | null;
+  /** Daily study-timer goal, 5–120 (default 25). */
+  daily_goal_minutes?: number;
+}
+
+/** PATCH /me/profile — learner-owned settings (today: the daily timer goal). */
+export interface ProfilePatchRequest {
+  daily_goal_minutes: number;
 }
 
 export interface RegisterRequest {
@@ -258,6 +265,41 @@ export interface Recording {
   /** Playable as-is by an <audio> element. */
   audio_url: string;
   score: number; // 0..1
+}
+
+// ---------------------------------------------------------------------------
+// Notebook (Ikaye)
+// ---------------------------------------------------------------------------
+
+/** One kept word/phrase — GET /notebook, newest first. */
+export interface NotebookEntry {
+  id: string;
+  /** Soft link to the source curriculum item; null for free-form entries. */
+  item_id?: string | null;
+  text: string;
+  gloss?: string | null;
+  note?: string | null;
+  created_at: string; // ISO datetime
+  /** Live item sentence/gloss when item-linked (text/gloss are the snapshot). */
+  item_sentence?: string | null;
+  item_gloss?: string | null;
+  /** Cached Cloudinary TTS URL, playable as-is; null when uncached/free-form. */
+  audio_url?: string | null;
+}
+
+/** POST /notebook — free-form text, or item_id to snapshot the item. */
+export interface NotebookCreateRequest {
+  text?: string;
+  gloss?: string;
+  note?: string;
+  item_id?: string;
+}
+
+/** PATCH /notebook/{id} — only provided fields change. */
+export interface NotebookUpdateRequest {
+  text?: string;
+  gloss?: string | null;
+  note?: string | null;
 }
 
 // ---------------------------------------------------------------------------

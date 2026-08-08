@@ -7,10 +7,15 @@ import type {
   Item,
   LoginRequest,
   MeResponse,
+  NotebookCreateRequest,
+  NotebookEntry,
+  NotebookUpdateRequest,
   OkResponse,
   PlacementAnswerRequest,
   PlacementAnswerResponse,
   PlacementStartResponse,
+  Profile,
+  ProfilePatchRequest,
   ProgressResponse,
   PronReport,
   Recording,
@@ -67,6 +72,23 @@ export const resetPassword = (token: string, newPassword: string) =>
     method: "POST",
     body: { token, new_password: newPassword },
   });
+
+/** PATCH /me/profile — currently just the daily study-timer goal. */
+export const patchProfile = (body: ProfilePatchRequest) =>
+  apiFetch<Profile>("/me/profile", { method: "PATCH", body });
+
+// --- Notebook (Ikaye) -------------------------------------------------------
+
+export const getNotebook = () => apiFetch<NotebookEntry[]>("/notebook");
+
+export const addNotebookEntry = (body: NotebookCreateRequest) =>
+  apiFetch<NotebookEntry>("/notebook", { method: "POST", body });
+
+export const updateNotebookEntry = (id: string, body: NotebookUpdateRequest) =>
+  apiFetch<NotebookEntry>(`/notebook/${id}`, { method: "PATCH", body });
+
+export const deleteNotebookEntry = (id: string) =>
+  apiFetch<void>(`/notebook/${id}`, { method: "DELETE" });
 
 // --- Content ----------------------------------------------------------------
 
