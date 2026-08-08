@@ -154,6 +154,18 @@ export function BuddyWidget() {
     if (open) endRef.current?.scrollIntoView({ block: "end" });
   }, [open, messages, awaiting]);
 
+  // Escape closes from anywhere while the panel is up — focus may sit on a
+  // control that has just been disabled (the send button after a send), so a
+  // panel-scoped handler alone would miss the key.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeBuddy();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   const go = useCallback(
     (href: string) => {
       closeBuddy();
@@ -166,15 +178,13 @@ export function BuddyWidget() {
     if (!draft.trim()) return;
     sendBuddyMessage(draft);
     setDraft("");
+    // The send button disables itself on an empty draft; keep the caret where
+    // the learner is about to type instead of dropping focus to <body>.
+    inputRef.current?.focus();
   };
 
-  /** Escape closes; Tab is trapped inside the panel while it's open. */
+  /** Tab is trapped inside the panel while it's open (Escape lives on window). */
   const onPanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      closeBuddy();
-      return;
-    }
     if (event.key !== "Tab" || !panelRef.current) return;
     const nodes = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
       (el) => el.offsetParent !== null || el === document.activeElement,
