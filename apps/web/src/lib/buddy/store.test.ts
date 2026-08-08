@@ -69,6 +69,7 @@ describe("buddy store", () => {
     FakeSocket.instances = [];
     vi.stubGlobal("WebSocket", FakeSocket);
     window.sessionStorage.clear();
+    window.localStorage.clear();
     vi.useFakeTimers();
   });
 
@@ -169,6 +170,57 @@ describe("buddy store", () => {
     const roles = stored.messages.map((m) => m.role);
     expect(roles).toEqual(["buddy", "learner", "buddy"]); // greeting, turn, reply
     expect(stored.messages[2].actions).toHaveLength(1);
+  });
+
+  it("hangs a follow-up clip on the reply that ordered it", async () => {
+    const store = await loadStore();
+    store.openBuddy();
+    latest().accept();
+    store.sendBuddyMessage("say hi");
+    latest().emit({ type: "buddy", id: "clip-1", text: "Muraho!" });
+    expect(store.getBuddySnapshot().messages.at(-1)).toMatchObject({ audioId: "clip-1" });
+    expect(store.getBuddySnapshot().messages.at(-1)?.audioUrl).toBeUndefined();
+
+    latest().emit({ type: "buddy_audio", id: "clip-1", audio_url: "https://cdn/clip-1.mp3" });
+    expect(store.getBuddySnapshot().messages.at(-1)).toMatchObject({
+      text: "Muraho!",
+      audioUrl: "https://cdn/clip-1.mp3",
+    });
+    // The clip rode along into storage, and rides back out on a remount.
+    const fresh = await loadStore();
+    fresh.hydrateBuddy();
+    expect(fresh.getBuddySnapshot().messages.at(-1)?.audioUrl).toBe("https://cdn/clip-1.mp3");
+  });
+
+  it("forgets a clip that was still pending when the tab reloaded", async () => {
+    const store = await loadStore();
+    store.openBuddy();
+    latest().accept();
+    store.sendBuddyMessage("say hi");
+    latest().emit({ type: "buddy", id: "clip-1", text: "Muraho!" });
+
+    // That buddy_audio frame can never arrive on a new socket: the control
+    // must come back as a plain, silent turn rather than wait forever.
+    const fresh = await loadStore();
+    fresh.hydrateBuddy();
+    expect(fresh.getBuddySnapshot().messages.at(-1)).toMatchObject({ text: "Muraho!" });
+    expect(fresh.getBuddySnapshot().messages.at(-1)?.audioId).toBeUndefined();
+  });
+
+  it("remembers the speaker toggle across sessions, defaulting to on", async () => {
+    const store = await loadStore();
+    store.hydrateBuddy();
+    expect(store.getBuddySnapshot().soundOn).toBe(true);
+
+    store.setBuddySound(false);
+    expect(store.getBuddySnapshot().soundOn).toBe(false);
+    expect(window.localStorage.getItem("sauti.buddy.sound.v1")).toBe("0");
+
+    // A whole new session (localStorage survives, sessionStorage may not).
+    window.sessionStorage.clear();
+    const fresh = await loadStore();
+    fresh.hydrateBuddy();
+    expect(fresh.getBuddySnapshot().soundOn).toBe(false);
   });
 
   it("wipes the conversation and the socket on reset", async () => {

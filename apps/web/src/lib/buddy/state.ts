@@ -7,12 +7,19 @@
  *
  * Wire contract (WS /api/v1/ws/buddy?token=…):
  *   client → {text}
- *   server → {type:"buddy", text, gloss?}
+ *   server → {type:"buddy", id?, text, gloss?}
+ *          | {type:"buddy_audio", id, audio_url}
  *          | {type:"action", action:{kind:"navigate", href, label}}
  *          | {type:"error", text}
  * Everything is treated as untrusted: unknown frame types are dropped, a
- * malformed buddy frame still clears the typing indicator, and an action
- * whose href isn't an in-app path is discarded outright.
+ * malformed buddy frame still clears the typing indicator, an action whose
+ * href isn't an in-app path is discarded outright, and a clip URL that isn't
+ * http(s) or a same-origin path never reaches an <audio> element.
+ *
+ * Voice is a follow-up, not a promise: a buddy frame carrying an `id` says a
+ * clip is being synthesized, and the matching `buddy_audio` frame lands a few
+ * seconds later — or never, if the voice service is down. That silence is a
+ * normal degradation (the turn stays readable), never an error.
  */
 
 export const BUDDY_NAME = "Mwarimu";
@@ -37,8 +44,7 @@ export const BUDDY_OFFLINE =
   "Ayi — I lost the line for a second. Say it again and I'll catch it this time.";
 
 /** Shown when a turn goes out but nothing comes back. */
-export const BUDDY_SILENCE =
-  "Mmh. I opened my mouth and nothing came out. Nudge me again?";
+export const BUDDY_SILENCE = "Mmh. I opened my mouth and nothing came out. Nudge me again?";
 
 const ERROR_FALLBACK =
   "Aya! My brain tripped over a rock there. Try me once more — I'm tougher than I look.";
@@ -59,6 +65,13 @@ export interface BuddyMessage {
   tone?: "error";
   /** Guidance chips, attached to the buddy turn they belong to. */
   actions?: BuddyAction[];
+  /**
+   * Server clip id. Its presence means a voice clip was promised for this
+   * turn — the play control waits on it (`pending`) until `audioUrl` lands.
+   */
+  audioId?: string;
+  /** Playable clip URL, set by the follow-up `buddy_audio` frame. */
+  audioUrl?: string;
 }
 
 export interface BuddyState {
@@ -97,6 +110,35 @@ export function safeAppHref(href: unknown): string | null {
   return trimmed;
 }
 
+/** Longest clip URL we'll hand to an <audio> element. */
+const AUDIO_URL_MAX = 2048;
+/** Longest server clip id we'll keep on a message. */
+const CLIP_ID_MAX = 128;
+
+/**
+ * Guard for a clip URL off the wire. Only an absolute http(s) URL (the TTS
+ * host / CDN) or a same-origin path is playable; `javascript:`, `data:`,
+ * `blob:`, protocol-relative `//host` and anything with control characters
+ * are refused, so a hostile frame can never become an <audio> src.
+ */
+export function safeAudioUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const url = value.trim();
+  if (!url || url.length > AUDIO_URL_MAX) return null;
+  if (/[\u0000-\u001f\u007f]/.test(url)) return null;
+  if (/^https?:\/\/[^/\\?#]+/i.test(url)) return url;
+  if (url.startsWith("//") || url.startsWith("/\\")) return null;
+  return url.startsWith("/") ? url : null;
+}
+
+/** Guard for the id that ties a `buddy_audio` frame back to its turn. */
+export function safeClipId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const id = value.trim();
+  if (!id || id.length > CLIP_ID_MAX) return null;
+  return /[\u0000-\u001f\u007f]/.test(id) ? null : id;
+}
+
 /** Trim to the wire cap. Used by the textarea and again before sending. */
 export function clampInput(text: string): string {
   return text.length > INPUT_MAX ? text.slice(0, INPUT_MAX) : text;
@@ -129,7 +171,8 @@ export function humanizeError(text: unknown): string {
 // ---------------------------------------------------------------------------
 
 export type BuddyFrame =
-  | { type: "buddy"; text: string; gloss?: string }
+  | { type: "buddy"; text: string; gloss?: string; id?: string }
+  | { type: "buddy_audio"; id: string; audioUrl: string }
   | { type: "action"; action: BuddyAction }
   | { type: "error"; text: string };
 
@@ -166,7 +209,20 @@ export function parseFrame(raw: unknown): BuddyFrame | null {
       // in-character fallback rather than leaving the typing dots spinning.
       if (!text) return { type: "error", text: ERROR_FALLBACK };
       const gloss = nonEmptyString(frame.gloss);
-      return gloss ? { type: "buddy", text, gloss } : { type: "buddy", text };
+      // An id (when the server sends one) means a clip is on its way.
+      const id = safeClipId(frame.id);
+      return {
+        type: "buddy",
+        text,
+        ...(gloss ? { gloss } : {}),
+        ...(id ? { id } : {}),
+      };
+    }
+    case "buddy_audio": {
+      // Both halves must be sound: an id we can match and a URL we can play.
+      const id = safeClipId(frame.id);
+      const audioUrl = safeAudioUrl(frame.audio_url);
+      return id && audioUrl ? { type: "buddy_audio", id, audioUrl } : null;
     }
     case "action": {
       const action = asRecord(frame.action);
@@ -219,6 +275,21 @@ function attachAction(state: BuddyState, action: BuddyAction): BuddyState {
   return { ...state, messages };
 }
 
+/**
+ * Hang a synthesized clip on the turn that ordered it, matched by the server's
+ * id. No match (a stale id, a turn the tab never saw, a second clip for the
+ * same id) → the frame is dropped and the state object is returned untouched.
+ */
+function attachAudio(state: BuddyState, id: string, audioUrl: string): BuddyState {
+  const index = state.messages.findIndex(
+    (m) => m.role === "buddy" && m.audioId === id && !m.audioUrl,
+  );
+  if (index === -1) return state;
+  const messages = state.messages.slice();
+  messages[index] = { ...messages[index], audioUrl };
+  return { ...state, messages };
+}
+
 export function reduceBuddy(state: BuddyState, event: BuddyEvent): BuddyState {
   switch (event.kind) {
     case "learner": {
@@ -227,7 +298,11 @@ export function reduceBuddy(state: BuddyState, event: BuddyEvent): BuddyState {
       return { ...append(state, { role: "learner", text }), awaiting: true };
     }
     case "say":
-      return append(state, { role: "buddy", text: event.text, tone: event.tone });
+      return append(state, {
+        role: "buddy",
+        text: event.text,
+        tone: event.tone,
+      });
     case "awaiting":
       return state.awaiting === event.value ? state : { ...state, awaiting: event.value };
     case "reset":
@@ -236,13 +311,118 @@ export function reduceBuddy(state: BuddyState, event: BuddyEvent): BuddyState {
       const frame = parseFrame(event.frame);
       if (!frame) return state;
       if (frame.type === "action") return { ...attachAction(state, frame.action), awaiting: false };
+      // A clip lands on an existing turn: no new bubble, and the typing
+      // indicator is not this frame's business.
+      if (frame.type === "buddy_audio") return attachAudio(state, frame.id, frame.audioUrl);
       const next =
         frame.type === "buddy"
-          ? append(state, { role: "buddy", text: frame.text, gloss: frame.gloss })
+          ? append(state, {
+              role: "buddy",
+              text: frame.text,
+              gloss: frame.gloss,
+              audioId: frame.id,
+            })
           : append(state, { role: "buddy", text: frame.text, tone: "error" });
       return { ...next, awaiting: false };
     }
     default:
       return state;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Playback rules
+// ---------------------------------------------------------------------------
+
+/** What the play control shows for a turn. "playing" is UI-only, on top. */
+export type ClipState = "none" | "pending" | "ready";
+
+/**
+ * The URL this turn can actually play, re-checked at the point of use — a
+ * message can also arrive from sessionStorage, which is not the wire but is
+ * still not our own memory.
+ */
+export function playableClip(message: BuddyMessage | null | undefined): string | null {
+  if (!message || message.role !== "buddy") return null;
+  return safeAudioUrl(message.audioUrl);
+}
+
+/**
+ * `pending` while a promised clip is still being synthesized, `ready` once a
+ * playable URL has landed, `none` when the turn was never going to speak (the
+ * static greeting, an offline note, a server with no voice service). A clip
+ * that never arrives simply stays pending — silence is not an error.
+ */
+export function clipState(message: BuddyMessage): ClipState {
+  if (message.role !== "buddy") return "none";
+  if (playableClip(message)) return "ready";
+  return message.audioId ? "pending" : "none";
+}
+
+/**
+ * The one message that may start playing by itself, or null.
+ *
+ * Only the NEWEST message qualifies: when a burst of frames arrives (or a
+ * clip lands late, after the learner has already said something else) nothing
+ * older ever speaks up. A turn is offered exactly once — `heard` carries the
+ * ids we have already played or tried to play — and never while the sound
+ * toggle is off or the panel is shut.
+ */
+export function autoplayCandidate(
+  messages: readonly BuddyMessage[],
+  ctx: { soundOn: boolean; open: boolean; heard: ReadonlySet<number> },
+): BuddyMessage | null {
+  if (!ctx.soundOn || !ctx.open) return null;
+  const newest = messages[messages.length - 1];
+  if (!newest || ctx.heard.has(newest.id) || !playableClip(newest)) return null;
+  return newest;
+}
+
+/**
+ * Re-validate one message read back from sessionStorage. Unknown shapes are
+ * dropped, hrefs and clip URLs go through the same guards as the wire, and a
+ * clip that was still pending when the tab reloaded is forgotten: that frame
+ * can never arrive on this socket, so the control must not wait forever.
+ */
+export function reviveMessage(raw: unknown): BuddyMessage | null {
+  const stored = asRecord(raw);
+  if (!stored) return null;
+  const { id, role } = stored;
+  if (typeof id !== "number" || !Number.isFinite(id)) return null;
+  if (role !== "buddy" && role !== "learner") return null;
+
+  const message: BuddyMessage = {
+    id,
+    role,
+    text: typeof stored.text === "string" ? stored.text : "",
+  };
+  const gloss = nonEmptyString(stored.gloss);
+  if (gloss) message.gloss = gloss;
+  if (stored.tone === "error") message.tone = "error";
+
+  if (Array.isArray(stored.actions)) {
+    const actions = stored.actions
+      .map((entry) => {
+        const action = asRecord(entry);
+        const href = action && action.kind === "navigate" ? safeAppHref(action.href) : null;
+        return href
+          ? ({
+              kind: "navigate",
+              href,
+              label: nonEmptyString(action?.label) ?? "Take me there",
+            } as BuddyAction)
+          : null;
+      })
+      .filter((action): action is BuddyAction => action !== null)
+      .slice(0, MAX_ACTIONS);
+    if (actions.length) message.actions = actions;
+  }
+
+  const audioUrl = safeAudioUrl(stored.audioUrl);
+  if (audioUrl) {
+    message.audioUrl = audioUrl;
+    const audioId = safeClipId(stored.audioId);
+    if (audioId) message.audioId = audioId;
+  }
+  return message;
 }

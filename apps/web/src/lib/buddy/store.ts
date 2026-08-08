@@ -9,6 +9,7 @@ import {
   initialBuddyState,
   prepareOutgoing,
   reduceBuddy,
+  reviveMessage,
   type BuddyMessage,
   type BuddyState,
 } from "./state";
@@ -28,6 +29,12 @@ import {
 
 const STORAGE_KEY = "sauti.buddy.v1";
 const STORAGE_VERSION = 1;
+/**
+ * The voice preference outlives the tab, so it lives in localStorage (the
+ * conversation itself does not). Absent/unreadable → sound is ON: a learning
+ * app whose teacher never speaks is the worse default.
+ */
+const SOUND_KEY = "sauti.buddy.sound.v1";
 /** Panel shut this long → drop the socket. */
 const IDLE_CLOSE_MS = 180_000;
 /** No frame back after a send → say something rather than spin forever. */
@@ -39,12 +46,15 @@ export interface BuddySnapshot {
   awaiting: boolean;
   open: boolean;
   connected: boolean;
+  /** Speaker toggle: when off, replies stay silent unless tapped. */
+  soundOn: boolean;
 }
 
 let state: BuddyState = initialBuddyState;
 let open = false;
 let connected = false;
 let hydrated = false;
+let soundOn = true;
 
 let socket: WebSocket | null = null;
 /** Set while we close the socket ourselves — suppresses the reconnect. */
@@ -57,11 +67,23 @@ let idleTimer: ReturnType<typeof setTimeout> | null = null;
 let replyTimer: ReturnType<typeof setTimeout> | null = null;
 
 const listeners = new Set<() => void>();
-let snapshot: BuddySnapshot = { messages: [], awaiting: false, open: false, connected: false };
+let snapshot: BuddySnapshot = {
+  messages: [],
+  awaiting: false,
+  open: false,
+  connected: false,
+  soundOn: true,
+};
 const serverSnapshot: BuddySnapshot = snapshot;
 
 function publish() {
-  snapshot = { messages: state.messages, awaiting: state.awaiting, open, connected };
+  snapshot = {
+    messages: state.messages,
+    awaiting: state.awaiting,
+    open,
+    connected,
+    soundOn,
+  };
   for (const listener of listeners) listener();
 }
 
@@ -70,7 +92,11 @@ function persist() {
   try {
     window.sessionStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ v: STORAGE_VERSION, messages: state.messages, nextId: state.nextId }),
+      JSON.stringify({
+        v: STORAGE_VERSION,
+        messages: state.messages,
+        nextId: state.nextId,
+      }),
     );
   } catch {
     // Private mode / quota — the chat still works, it just won't survive a reload.
@@ -85,23 +111,53 @@ function dispatch(event: Parameters<typeof reduceBuddy>[1]) {
   publish();
 }
 
+/** The stored voice preference, defaulting to ON. */
+function readSoundPreference(): boolean {
+  try {
+    return window.localStorage.getItem(SOUND_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+/** Flip the speaker. Persisted, so it holds across sessions. */
+export function setBuddySound(on: boolean) {
+  if (soundOn === on) return;
+  soundOn = on;
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(SOUND_KEY, on ? "1" : "0");
+    } catch {
+      // Private mode / quota — the toggle still works for this session.
+    }
+  }
+  publish();
+}
+
 /** Read the tab's stored conversation. Called once from the widget's mount. */
 export function hydrateBuddy() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
+  const storedSound = readSoundPreference();
+  if (storedSound !== soundOn) {
+    soundOn = storedSound;
+    publish();
+  }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return;
-    const saved = JSON.parse(raw) as { v?: number; messages?: unknown; nextId?: unknown };
+    const saved = JSON.parse(raw) as {
+      v?: number;
+      messages?: unknown;
+      nextId?: unknown;
+    };
     if (saved.v !== STORAGE_VERSION || !Array.isArray(saved.messages)) return;
-    const messages = (saved.messages as BuddyMessage[]).filter(
-      (m) => m && typeof m.id === "number" && (m.role === "buddy" || m.role === "learner"),
-    );
+    // Storage is not the wire, but it isn't our own memory either: every
+    // message goes back through the same guards on the way in.
+    const messages = saved.messages.map(reviveMessage).filter((m): m is BuddyMessage => m !== null);
     if (!messages.length) return;
     const nextId =
-      typeof saved.nextId === "number"
-        ? saved.nextId
-        : Math.max(...messages.map((m) => m.id)) + 1;
+      typeof saved.nextId === "number" ? saved.nextId : Math.max(...messages.map((m) => m.id)) + 1;
     state = { messages, awaiting: false, nextId };
     publish();
   } catch {
@@ -135,7 +191,10 @@ function scheduleReconnect() {
 
 function connect() {
   if (typeof window === "undefined" || typeof WebSocket === "undefined") return;
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+  if (
+    socket &&
+    (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+  ) {
     return;
   }
   if (!getAccessToken()) {
@@ -288,6 +347,11 @@ function subscribe(listener: () => void): () => void {
 }
 
 function getSnapshot(): BuddySnapshot {
+  return snapshot;
+}
+
+/** The current snapshot outside React (tests, imperative callers). */
+export function getBuddySnapshot(): BuddySnapshot {
   return snapshot;
 }
 
