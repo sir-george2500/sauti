@@ -91,6 +91,22 @@ tts  ✓  healthy on :8093 (pid 12345) voices 0/3 — still loading, speech not 
 
 If the first phrase you play is slow or silent, check that line and wait.
 
+### What "normal" looks like
+
+Measured on this machine, with the images already built:
+
+| | |
+| --- | --- |
+| `sauti up` — everything already healthy | ~20 ms |
+| `sauti up` — containers only (`--no-voice`, from stopped) | ~14 s |
+| `sauti up` — full cold boot, containers + both voice models | ~25–32 s |
+| `sauti up` — TTS voices fully loaded after that | a further 1–3 min, in the background |
+| `sauti status` | ~0.2 s |
+| `sauti down` | ~3–6 s |
+
+The first `sauti up` after a `sauti rebuild` is much slower, because it builds
+the `api` and `web` images before any of this.
+
 ### Where things live
 
 | | |
