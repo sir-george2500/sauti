@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/endpoints";
 import { greetingName, RequireAuth, useAuth } from "@/lib/auth";
 import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
+import { BuddyWidget } from "@/components/BuddyWidget";
 
 const COURSES: { code: string; label: string }[] = [
   { code: "KIN", label: "Ikinyarwanda" },
@@ -296,6 +297,9 @@ function Shell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
+      {/* Mwarimu rides along inside the shell: one mount, one socket, one
+          conversation across every route change — and never on /login. */}
+      <BuddyWidget />
     </div>
   );
 }

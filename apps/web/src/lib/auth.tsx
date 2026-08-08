@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { getAccessToken, refreshAccessToken } from "./api/client";
 import { getMe, logout } from "./api/endpoints";
+import { resetBuddy } from "./buddy/store";
 import type { MeResponse } from "./api/types";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
@@ -66,6 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Token is cleared locally regardless.
     }
+    // The buddy chat is per-session: the next user on this tab starts clean.
+    resetBuddy();
     setMe(null);
     setStatus("anonymous");
   }, []);
