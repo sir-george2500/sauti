@@ -17,6 +17,7 @@ from sauti.llm.openai_client import OpenAiLlmClient
 from sauti.rate_limit import RateLimiter
 from sauti.routers import (
     auth,
+    buddy_ws,
     conversation_ws,
     courses,
     health,
@@ -134,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         speech.router,
         scenarios.router,
         conversation_ws.router,
+        buddy_ws.router,
     ):
         app.include_router(r, prefix=API_PREFIX)
 

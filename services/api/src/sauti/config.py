@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     rate_limit_window_s: int = 60
     rate_limit_auth_max: int = 10
     rate_limit_conversation_max: int = 20
+    rate_limit_buddy_max: int = 30  # study-buddy messages per window, per user
 
     # Local storage for stub speech artefacts
     audio_dir: str = str(Path(__file__).resolve().parents[2] / "var" / "audio")

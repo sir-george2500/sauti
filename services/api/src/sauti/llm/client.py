@@ -48,8 +48,14 @@ class LlmClient(Protocol):
         messages: list[dict],
         tools: list[ToolSpec] | None = None,
         tool_choice: str | None = None,
+        max_tokens: int | None = None,
     ) -> LlmTurn:
-        """messages: OpenAI chat format dicts. tool_choice: tool name to force, or None."""
+        """messages: OpenAI chat format dicts. tool_choice: tool name to force, or None.
+
+        max_tokens caps the completion for this call (surfaces differ: a
+        conversation turn is a JSON envelope, a buddy bubble is a sentence);
+        None keeps the client's default.
+        """
         ...
 
 
