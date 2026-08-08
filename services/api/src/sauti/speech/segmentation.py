@@ -33,8 +33,8 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 RW = "rw"
 EN = "en"
