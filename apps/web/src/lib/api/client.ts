@@ -132,3 +132,10 @@ export function conversationWsUrl(scenarioId: string): string {
   const token = accessToken ? `?token=${encodeURIComponent(accessToken)}` : "";
   return `${base}/ws/conversation/${scenarioId}${token}`;
 }
+
+/** WebSocket URL for the floating study buddy (Mwarimu), same token scheme. */
+export function buddyWsUrl(): string {
+  const base = API_BASE_URL.replace(/^http/, "ws");
+  const token = accessToken ? `?token=${encodeURIComponent(accessToken)}` : "";
+  return `${base}/ws/buddy${token}`;
+}
