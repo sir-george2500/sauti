@@ -6,6 +6,7 @@ import { getProgress, getRoadmap, getSessionToday } from "@/lib/api/endpoints";
 import { greetingName, useAuth } from "@/lib/auth";
 import { consistencyLabel, sessionPlanView } from "@/lib/session-plan";
 import { proverbOfTheDay } from "@/lib/proverbs";
+import { DailyTimer } from "@/components/DailyTimer";
 import { btnPrimary, Card, CardLabel, ErrorNote, Kicker, LoadingNote } from "@/components/ui";
 import type { SessionBlockKind } from "@/lib/api/types";
 
@@ -216,6 +217,8 @@ export default function TodayPage() {
           )}
         </Card>
       </div>
+
+      <DailyTimer />
 
       <div
         data-testid="proverb-card"
