@@ -1,0 +1,104 @@
+# Sauti — local, single-machine deployment.
+#
+#   cd deploy && docker compose up -d          (or: sauti up)
+#   open http://sauti.localhost
+#
+# What is NOT here: the ML voice services (services/voice TTS on :8093 and the
+# Kinyarwanda ASR on :8092). They keep ~8 GB of virtualenv + Hugging Face
+# checkpoints on the host; containerising them would duplicate that onto a disk
+# with ~27 GB free. The api container reaches them through host.docker.internal.
+name: sauti
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sauti
+      POSTGRES_PASSWORD: sauti
+      POSTGRES_DB: sauti
+    volumes:
+      - sauti-pgdata:/var/lib/postgresql/data
+    # Loopback only, and 55433 to stay clear of 55432 (the e2e container) and
+    # 5432 (anything the host runs). Purely for psql/import debugging.
+    ports:
+      - "127.0.0.1:55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sauti -d sauti"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    env_file:
+      - .env.docker
+    environment:
+      # The compose database, not Supabase. Plain Postgres, so the pgbouncer
+      # prepared-statement workaround in db.py is inert here (harmless).
+      POSTGRES_URL: postgresql://sauti:sauti@db:5432/sauti
+      DATABASE_SCHEMA: sauti
+      # One origin for browser + API, so CORS and the refresh cookie line up.
+      APP_BASE_URL: http://sauti.localhost
+      APP_FRONTEND_URL: http://sauti.localhost
+      COOKIE_SECURE: "false"
+      # X-Forwarded-For is set by our own Caddy, so rate limits key on the real
+      # client instead of the proxy's container IP.
+      TRUST_PROXY_HEADERS: "true"
+      # Real speech + real LLM. The voice services listen on the host.
+      SAUTI_FAKE_AI: "0"
+      VOICE_SERVICE_URL: http://host.docker.internal:8093
+      SAUTI_ASR_URL: http://host.docker.internal:8092
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Runtime state, never baked into the image: learner audio uploads and
+      # the local WAV fallback the Cloudinary cache writes when it can't reach
+      # Cloudinary. config.py derives both from services/api/var → /app/var.
+      - sauti-apivar:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        # Baked into the client bundle at build time — the browser must reach
+        # the API through the proxy, on the same origin as the page.
+        NEXT_PUBLIC_API_BASE_URL: http://sauti.localhost/api/v1
+    depends_on:
+      - api
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - sauti-caddy-data:/data
+      - sauti-caddy-config:/config
+    # Published on BOTH stacks: sauti.localhost resolves to ::1 on this
+    # machine, plain localhost to 127.0.0.1, so a v4-only bind would give a
+    # confusing "connection refused" in the browser.
+    ports:
+      - "0.0.0.0:80:80"
+      - "[::]:80:80"
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+volumes:
+  sauti-pgdata:
+  sauti-apivar:
+  sauti-caddy-data:
+  sauti-caddy-config:

@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*.local
+# Local deployment secrets; deploy/.env.docker.example is the committed template.
+deploy/.env.docker
 
 # Node / Next.js
 node_modules/

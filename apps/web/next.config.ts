@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server.js + only the traced node_modules, so deploy/web.Dockerfile
+  // can ship a runtime layer without the dev dependency tree. No effect on `next dev`.
+  output: "standalone",
   // Pin the workspace root to this app so Next doesn't infer a parent dir.
   turbopack: {
     root: import.meta.dirname,

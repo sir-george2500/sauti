@@ -1,0 +1,39 @@
+# Build context for deploy/api.Dockerfile and deploy/web.Dockerfile is the repo
+# root, so keep the heavy, host-only and secret things out of it. Without these
+# the context is ~1.5 GB (node_modules + .next + .venv); with them it is ~60 MB.
+
+# Secrets — never inside a build context.
+.env
+.env.local
+.env.*.local
+deploy/.env.docker
+
+# Heavy host-side artefacts
+**/node_modules/
+**/.next/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+.git/
+.pnpm-store/
+
+# Host-only ML voice services (torch + Hugging Face checkpoints stay on the host)
+services/voice/
+
+# Agent skills and design archives — never part of a runtime image
+skills/
+**/*.zip
+
+# Test / build output
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/htmlcov/
+**/*.tsbuildinfo
+services/api/var/
+apps/web/e2e/
+design/
+docs/
