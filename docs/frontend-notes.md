@@ -90,7 +90,8 @@ backend lands a different shape, update that file + this list together.
   MVP) — an audio element can't send a bearer token.
 - **Study buddy (Mwarimu)**: `ws(s)://…/api/v1/ws/buddy?token=…`, client sends
   `{text}` (capped at 500 chars client-side, truncated again server-side).
-  Server frames: `{type:"buddy", text, gloss?}`, `{type:"action", action:
+  Server frames: `{type:"buddy", id?, text, gloss?}`, `{type:"buddy_audio",
+  id, audio_url}`, `{type:"action", action:
   {kind:"navigate", href, label}}`, `{type:"error", text}`. The widget mounts
   once in `AppShell` (inside `RequireAuth`), so it exists on every authenticated
   route and on none of the auth pages. Conversation state lives in
@@ -99,6 +100,18 @@ backend lands a different shape, update that file + this list together.
   drop, and closes after 3 idle minutes with the panel shut. Action hrefs are
   re-checked client-side by `safeAppHref()` — only in-app absolute paths are
   followed, the same open-redirect rule as the login `?next=` param.
+- **Mwarimu's voice**: a buddy frame carrying an `id` means a clip is being
+  synthesized; the matching `buddy_audio` frame attaches it to that turn (by
+  id — an unmatched or malformed frame is dropped). Each such turn shows
+  `buddy-play` with `data-state=pending|ready|playing`; a clip that never
+  arrives simply stays pending, because a voice service that is down is a
+  silent degradation, not an error. `buddy-sound-toggle` (`data-on`) is the
+  speaker, persisted in `localStorage["sauti.buddy.sound.v1"]`, default ON:
+  with it on, the NEWEST reply plays itself once, and blocked autoplay
+  (`audio.play()` rejects) silently falls back to the ready button. Clip URLs
+  are guarded by `safeAudioUrl()` (http(s) or same-origin path only), and all
+  playback runs through `src/lib/audio/player.ts` — one clip at a time app-wide,
+  stopped when the panel closes, on mute, or on a guidance-chip navigation.
 - **Listening practice** is lesson-based (`/practice/listening/[lessonId]`):
   the lesson's items are the dialogue lines/transcript and its `quick_check`
   doubles as the comprehension MCQ (no dedicated listening payload in §5).
@@ -121,4 +134,6 @@ Stable `data-testid`s on all interactive elements and landmarks, including:
 `buddy-fab`, `buddy-panel`, `buddy-close`, `buddy-messages`, `buddy-message`
 (with `data-role="learner|buddy"`), `buddy-gloss`, `buddy-typing`,
 `buddy-action` (with `data-href`), `buddy-opener`, `buddy-input`, `buddy-send`,
+`buddy-play` (with `data-state="pending|ready|playing"`), `buddy-sound-toggle`
+(with `data-on`),
 `course-{CODE}`, `pace-{hours}`, `sign-out`, `nav-*`.
