@@ -58,7 +58,12 @@ class OpenAiLlmClient:
                 }
                 for t in tools
             ]
-        if tool_choice:
+        if tool_choice in ("auto", "required", "none"):
+            # "required" = call SOME tool. Left unforced, gpt-4o-mini happily
+            # answers in prose (markdown links and all) and the structured
+            # envelope — gloss, validated actions — never arrives.
+            body["tool_choice"] = tool_choice
+        elif tool_choice:
             body["tool_choice"] = {"type": "function", "function": {"name": tool_choice}}
         try:
             resp = await self._http().post(

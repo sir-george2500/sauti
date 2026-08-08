@@ -83,9 +83,13 @@ class RecordingFake(FakeLlmClient):
 
     def __init__(self) -> None:
         self.prompts: list[list[dict]] = []
+        self.choices: list[str | None] = []
+        self.max_tokens: list[int | None] = []
 
     async def complete(self, messages, tools=None, tool_choice=None, max_tokens=None):
         self.prompts.append([dict(m) for m in messages])
+        self.choices.append(tool_choice)
+        self.max_tokens.append(max_tokens)
         return await super().complete(messages, tools, tool_choice, max_tokens)
 
 
@@ -203,6 +207,33 @@ class TestBuddyWs:
         # Turn 2 extends turn 1 verbatim — an append-only prefix is what the
         # cache discount actually keys on.
         assert second[: len(first)] == first
+        # Every step must call SOME tool: left free, the model answers in prose
+        # and the structured envelope (gloss + validated actions) never arrives.
+        assert fake.choices == ["required", "required"]
+        assert fake.max_tokens == [180, 180]
+
+    def test_last_allowed_step_is_forced_to_say(self, app):
+        """A model that only ever wants more data still ends the turn in words."""
+
+        class ToolHungryFake(FakeLlmClient):
+            async def complete(self, messages, tools=None, tool_choice=None, max_tokens=None):
+                if tool_choice == "say":  # the forced final step
+                    return await super().complete(messages, tools, tool_choice, max_tokens)
+                return LlmTurn(
+                    tool_calls=[
+                        ToolCall(id=f"c{len(messages)}", name="get_my_status", arguments_json="{}")
+                    ],
+                    usage=TokenUsage(model="fake", prompt_tokens=10, completion_tokens=2),
+                )
+
+        app.state.llm_client = ToolHungryFake()
+        with TestClient(app) as tc:
+            token = _login(tc)
+            with tc.websocket_connect(f"/api/v1/ws/buddy?token={token}") as ws:
+                ws.send_json({"text": "how am I doing?"})
+                reply = ws.receive_json()
+                assert reply["type"] == "buddy"
+                assert reply["text"]  # words, not the loop-exhausted fallback
 
     def test_history_is_capped_at_six_turns(self, app):
         fake = RecordingFake()

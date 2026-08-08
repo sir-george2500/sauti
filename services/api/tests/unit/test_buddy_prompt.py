@@ -21,6 +21,7 @@ from sauti.services.buddy import (
     MAX_TOKENS,
     STATIC_SYSTEM_PROMPT,
     parse_href,
+    plain_text,
     render_snapshot,
 )
 
@@ -133,3 +134,32 @@ class TestHrefValidator:
 
     def test_surrounding_whitespace_is_tolerated(self):
         assert parse_href("  /progress  ") == ("static", "/progress")
+
+
+class TestPlainText:
+    """The chat bubble is plain text. The prompt forbids markdown; observed
+    live, gpt-4o-mini still emits **bold** and [label](/href) now and then."""
+
+    def test_link_collapses_to_its_label(self):
+        assert (
+            plain_text("Ready? [Take me to those eight reviews](/vocab/family)")
+            == "Ready? Take me to those eight reviews"
+        )
+
+    def test_emphasis_and_code_marks_are_stripped(self):
+        assert plain_text("You learned **Mwaramutse** and `Mwiriwe`") == (
+            "You learned Mwaramutse and Mwiriwe"
+        )
+
+    def test_a_list_becomes_one_paragraph(self):
+        assert plain_text("Waiting:\n1. Muraho\n- Amakuru yawe?\n") == (
+            "Waiting: Muraho Amakuru yawe?"
+        )
+
+    def test_kinyarwanda_punctuation_survives(self):
+        for line in ("Ikilo cy'inyanya ni angahe?", "Abana bakinira ku rugo.", "Twige!"):
+            assert plain_text(line) == line
+
+    def test_empty_input_is_empty_output(self):
+        assert plain_text("") == ""
+        assert plain_text("   \n  ") == ""
