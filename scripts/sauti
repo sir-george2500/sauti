@@ -57,8 +57,8 @@ TTS_DIR="${SAUTI_TTS_DIR:-$REPO_DIR/services/voice}"
 ASR_DIR="${SAUTI_ASR_DIR:-/home/delta-x/rent-rwanda/services/voice}"
 TTS_UVICORN="${SAUTI_TTS_UVICORN:-/home/delta-x/rent-rwanda/services/voice/.venv-yourtts/bin/uvicorn}"
 ASR_UVICORN="${SAUTI_ASR_UVICORN:-$ASR_DIR/.venv-asr/bin/uvicorn}"
-TTS_APP="tts_app:app"
-ASR_APP="asr_kinyarwanda_app:app"
+TTS_APP="${SAUTI_TTS_APP:-tts_app:app}"
+ASR_APP="${SAUTI_ASR_APP:-asr_kinyarwanda_app:app}"
 
 # Timeouts (seconds). The voice models are slow to warm; be patient but bounded.
 TTS_TIMEOUT="${SAUTI_TTS_TIMEOUT:-210}"   # cold start ~1-2 min
@@ -153,6 +153,7 @@ port_pid() {
 # shell wrapper that mentions it (killing the wrapper would orphan the server).
 proc_matches() {
   local cmd argv0
+  [[ -r "/proc/$1/cmdline" ]] || return 1
   cmd="$(tr '\0' ' ' < "/proc/$1/cmdline" 2>/dev/null || true)"
   [[ -n "$cmd" && "$cmd" == *"$2"* ]] || return 1
   argv0="${cmd%% *}"; argv0="${argv0##*/}"
@@ -328,7 +329,12 @@ stop_voice() {
 # ---------------------------------------------------------------------------
 
 dc() {
-  docker compose -p "$PROJECT" -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+  local args=(-p "$PROJECT" -f "$COMPOSE_FILE")
+  # `up` refuses without the env file, but `down` and `logs` must keep working
+  # even if it went missing — passing --env-file for a file that is not there
+  # is a hard error in compose, and that must never block a shutdown.
+  [[ -f "$ENV_FILE" ]] && args+=(--env-file "$ENV_FILE")
+  docker compose "${args[@]}" "$@"
 }
 
 compose_containers() {
@@ -507,20 +513,31 @@ cmd_down() {
       "To delete study data you must ask explicitly: sauti reset --yes-really"
   acquire_lock
 
+  local failed=0
   if [[ -f "$COMPOSE_FILE" ]] && docker info >/dev/null 2>&1; then
     info "Stopping containers…"
     # No -v: the Postgres volume, and the study data in it, stays.
-    dc down --remove-orphans
-    ok "Containers stopped (database volume kept)"
+    if dc down --remove-orphans; then
+      ok "Containers stopped (database volume kept)"
+    else
+      bad "could not stop the containers — see the compose output above"
+      failed=1
+    fi
   else
     dim "  containers — Docker unreachable or no compose file, skipping"
   fi
 
+  # Whatever happened to the containers, the host voice services still have to
+  # come down: half a shutdown is worse than none.
   info "Stopping voice services…"
   local n
   for n in "${VOICE_SERVICES[@]}"; do stop_voice "$n"; done
 
   say ""
+  if (( failed )); then
+    bad "Voice services stopped, but the container stack did not come down cleanly."
+    exit 1
+  fi
   ok "All stopped. Your study data is safe — 'sauti up' picks up where you left off."
 }
 
@@ -754,4 +771,7 @@ main() {
   esac
 }
 
-main "$@"
+# SAUTI_SOURCE_ONLY lets scripts/sauti-selftest.sh source this file and poke at
+# the helpers directly (that is how the "kill the server, not its wrapper" bug
+# stays fixed). Nothing else should set it.
+[[ -n "${SAUTI_SOURCE_ONLY:-}" ]] || main "$@"
