@@ -78,6 +78,19 @@ The first `sauti up` after a reboot loads two neural models into memory:
 second `sauti up` later the same day is nearly instant, because the models are
 already loaded and `up` just confirms they are healthy.
 
+There is a second, subtler wait. The TTS server starts answering as soon as
+uvicorn is serving, but its three voices (Kinyarwanda female, Kinyarwanda male,
+English) load in a background thread and can take several more minutes. So
+`sauti up` can honestly say "healthy" while speech is not yet ready.
+`sauti status` shows the difference:
+
+```
+tts  ✓  healthy on :8093 (pid 12345) voices 3/3        <- speech works
+tts  ✓  healthy on :8093 (pid 12345) voices 0/3 — still loading, speech not ready
+```
+
+If the first phrase you play is slow or silent, check that line and wait.
+
 ### Where things live
 
 | | |

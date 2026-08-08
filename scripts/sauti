@@ -163,6 +163,12 @@ proc_matches() {
 
 need_dirs() { mkdir -p "$RUN_DIR" "$LOG_DIR"; }
 
+# The lock lives on a file descriptor, and file descriptors are inherited. Any
+# long-lived child we spawn must close LOCK_FD or it keeps the lock held for as
+# long as it runs — which made `sauti down` report "another sauti command is
+# already running" for the entire study session.
+readonly LOCK_FD=9
+
 acquire_lock() {
   need_dirs
   exec 9>"$LOCK_FILE"
@@ -188,6 +194,20 @@ health_asr() {
 }
 
 health_voice() { case "$1" in tts) health_tts;; asr) health_asr;; *) return 1;; esac; }
+
+# /health answers ok as soon as uvicorn is serving, but the three voice engines
+# load in a background thread and only flip to true minutes later. "Answering"
+# and "can actually speak" are different things, and the owner should be told
+# which one they have. Prints "loaded/total", e.g. "1/3".
+tts_voices_loaded() {
+  local body rest
+  body="$(curl -fsS -m 4 "http://127.0.0.1:$TTS_PORT/health" 2>/dev/null)" || return 1
+  [[ "$body" == *'"voices"'* ]] || return 1
+  rest="${body#*\"voices\"}"
+  printf '%s/%s' \
+    "$(grep -o '":[[:space:]]*true' <<< "$rest" | wc -l)" \
+    "$(grep -o '":[[:space:]]*\(true\|false\)' <<< "$rest" | wc -l)"
+}
 
 # The app health, through the proxy, exactly as the browser would reach it.
 health_app() {
@@ -256,16 +276,20 @@ start_voice() {
     return 0
   fi
 
-  # Something is on the port but not answering health: either our own warming
-  # process, or a stranger. Only the former is safe to wait on.
+  # Alive but not answering yet: it is mid warm-up. Wait for it — do NOT start
+  # a second one. This has to come before the port check, because uvicorn binds
+  # the port only *after* the model finishes loading, so a warming service
+  # leaves the port looking free for a minute or more.
+  local pid; pid="$(voice_any_pid "$name" || true)"
+  if [[ -n "$pid" ]]; then
+    info "$(voice_label "$name") — already starting (pid $pid), waiting for warm-up"
+    printf '%s' "$pid" > "$(pidfile "$name")"
+    await_voice "$name"
+    return $?
+  fi
+
+  # Nothing of ours, but the port is taken: a stranger. Say who, and stop.
   if port_in_use "$port"; then
-    local pid; pid="$(voice_any_pid "$name" || true)"
-    if [[ -n "$pid" ]]; then
-      info "$(voice_label "$name") — already starting (pid $pid), waiting for warm-up"
-      printf '%s' "$pid" > "$(pidfile "$name")"
-      await_voice "$name"
-      return $?
-    fi
     local who; who="$(port_listener "$port")"
     die_hint "port $port is in use by something that is not a Sauti voice service." \
              "Listener: ${who:-unknown (root-owned?)}" \
@@ -279,7 +303,8 @@ start_voice() {
 
   need_dirs
   { printf '\n===== %s: starting %s at %s =====\n' "$name" "$app" "$(date -Is)"; } >> "$log"
-  ( cd "$dir" && exec "$bin" "$app" --host 127.0.0.1 --port "$port" ) >> "$log" 2>&1 &
+  # 9>&- : do not hand our lock to a server that outlives this command.
+  ( cd "$dir" && exec "$bin" "$app" --host 127.0.0.1 --port "$port" ) >> "$log" 2>&1 9>&- &
   local pid=$!
   printf '%s' "$pid" > "$(pidfile "$name")"
   disown "$pid" 2>/dev/null || true
@@ -292,6 +317,11 @@ await_voice() {
   local name="$1" timeout; timeout="$(voice_timeout "$name")"
   if wait_until "$timeout" health_voice "$name"; then
     ok "$(voice_label "$name") — healthy"
+    if [[ "$name" == tts ]]; then
+      local v; v="$(tts_voices_loaded || true)"
+      [[ -n "$v" && "${v%%/*}" == "0" ]] &&
+        dim "     voices still loading in the background ($v) — the first phrase you play may take a moment"
+    fi
     return 0
   fi
   bad "$(voice_label "$name") — did not become healthy within ${timeout}s"
@@ -346,8 +376,24 @@ container_state() {
   compose_containers | awk -F'|' -v s="$1" '$1==s {print $2; exit}'
 }
 
-db_volumes() {
+project_volumes() {
   docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" 2>/dev/null
+}
+
+# The volume the study data actually lives in. Taken from the db container's
+# own mounts when it exists — that cannot be wrong — and from a name match on
+# the project's volumes when it does not.
+db_volumes() {
+  local c
+  c="$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
+       --filter "label=com.docker.compose.service=db" 2>/dev/null | head -1)"
+  if [[ -n "$c" ]]; then
+    docker inspect "$c" \
+      --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}' \
+      2>/dev/null | grep -v '^$' || true
+    return 0
+  fi
+  project_volumes | grep -Ei 'pg|postgres|db' || true
 }
 
 # ---------------------------------------------------------------------------
@@ -484,7 +530,7 @@ cmd_up() {
   info "Starting containers…"
   dc up -d --remove-orphans
 
-  printf '%s' "${C_DIM}"; info "Waiting for the app to answer at $APP_URL/healthz"; printf '%s' "${C_RESET}"
+  info "Waiting for the app to answer at $APP_URL/healthz"
   if ! wait_until "$APP_TIMEOUT" health_app; then
     bad "the app did not become healthy within ${APP_TIMEOUT}s"
     say "  Recent container logs:"
@@ -574,8 +620,17 @@ cmd_status() {
   for n in "${VOICE_SERVICES[@]}"; do
     pid="$(voice_any_pid "$n" || true)"
     if health_voice "$n"; then
-      printf '  %-4s %s%s%s  healthy on :%s%s\n' "$n" "$C_GREEN" "$MARK_OK" "$C_RESET" \
-        "$(voice_port "$n")" "${pid:+ (pid $pid)}"
+      local extra=""
+      if [[ "$n" == tts ]]; then
+        local v; v="$(tts_voices_loaded || true)"
+        if [[ -n "$v" && "${v%%/*}" == "0" ]]; then
+          extra=" ${C_YELLOW}voices $v — still loading, speech not ready${C_RESET}"
+        elif [[ -n "$v" ]]; then
+          extra=" ${C_DIM}voices $v${C_RESET}"
+        fi
+      fi
+      printf '  %-4s %s%s%s  healthy on :%s%s%s\n' "$n" "$C_GREEN" "$MARK_OK" "$C_RESET" \
+        "$(voice_port "$n")" "${pid:+ (pid $pid)}" "$extra"
     elif [[ -n "$pid" ]]; then
       printf '  %-4s %s%s%s  running but not answering yet — still warming up (pid %s)\n' \
         "$n" "$C_YELLOW" "$MARK_DOT" "$C_RESET" "$pid"
@@ -598,11 +653,18 @@ cmd_status() {
   if [[ -n "$vols" ]]; then
     local v
     while IFS= read -r v; do
-      [[ -n "$v" ]] && printf '  %s%s%s  volume %s\n' "$C_GREEN" "$MARK_OK" "$C_RESET" "$v"
+      [[ -n "$v" ]] || continue
+      printf '  %s%s%s  %s %s(your lessons, reviews and recordings)%s\n' \
+        "$C_GREEN" "$MARK_OK" "$C_RESET" "$v" "$C_DIM" "$C_RESET"
     done <<< "$vols"
   else
     printf '  %s%s%s  no database volume yet (created on first "sauti up")\n' \
       "$C_YELLOW" "$MARK_DOT" "$C_RESET"
+  fi
+  local others; others="$(project_volumes | wc -l)"
+  local dbcount; dbcount="$(printf '%s' "$vols" | grep -c . || true)"
+  if (( others > dbcount )); then
+    dim "  + $(( others - dbcount )) other volume(s) (caches — safe to lose)"
   fi
 
   say ""

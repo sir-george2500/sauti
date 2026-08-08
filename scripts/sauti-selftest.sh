@@ -349,8 +349,53 @@ else
   skip 'busy voice port' 'python3 not available'
 fi
 
+section 'the lock does not leak into the voice servers'
+
+# Regression guard. `sauti up` holds its lock on a file descriptor, and file
+# descriptors are inherited: the detached uvicorn processes used to keep that
+# fd open, so the lock stayed held for the whole study session and every later
+# `sauti down` was refused with "another sauti command is already running".
+cat > "$TMP/fake-uvicorn" <<'STUB'
+#!/usr/bin/env bash
+exec sleep 60
+STUB
+chmod +x "$TMP/fake-uvicorn"
+printf 'SELFTEST=1\n' > "$SAUTI_ENV_FILE"
+
+SAUTI_TTS_UVICORN="$TMP/fake-uvicorn" SAUTI_ASR_UVICORN="$TMP/fake-uvicorn" \
+SAUTI_TTS_TIMEOUT=3 SAUTI_ASR_TIMEOUT=3 SAUTI_APP_TIMEOUT=2 \
+  run "$SAUTI" up
+
+stub_pid="$(cat "$SAUTI_STATE_DIR/run/tts.pid" 2>/dev/null || true)"
+if [[ -z "$stub_pid" ]] || ! kill -0 "$stub_pid" 2>/dev/null; then
+  fail 'a spawned voice server does not inherit the lock fd' 'the stub server never started'
+elif ls -l "/proc/$stub_pid/fd/" 2>/dev/null | grep -q 'sauti\.lock'; then
+  fail 'a spawned voice server does not inherit the lock fd' \
+       'the stub server is holding the lockfile (regression)'
+else
+  pass 'a spawned voice server does not inherit the lock fd'
+fi
+
+# ...and the practical consequence: down must not be refused afterwards.
+run "$SAUTI" down
+if [[ "$OUT" == *'already running'* ]]; then
+  fail 'down is not blocked by a running voice server' 'down was refused by the lock'
+else
+  pass 'down is not blocked by a running voice server'
+fi
+if kill -0 "${stub_pid:-0}" 2>/dev/null; then
+  fail 'down stops the voice server it started' "pid $stub_pid is still alive"
+  kill -9 "$stub_pid" 2>/dev/null
+else
+  pass 'down stops the voice server it started'
+fi
+rm -f "$SAUTI_ENV_FILE"
+
 section 'logs'
 
+# Earlier sections started stub servers, which wrote a log. Clear it so the
+# never-started case is genuinely the never-started case.
+rm -f "$SAUTI_STATE_DIR/logs/tts.log"
 exits_saying 'logs tts with no log file yet is a clear error' 1 'no log file yet for tts' -- "$SAUTI" logs tts
 printf 'hello from the tts log\n' > "$SAUTI_STATE_DIR/logs/tts.log"
 exits_saying 'logs tts tails the host log file' 0 'hello from the tts log' -- "$SAUTI" logs tts
