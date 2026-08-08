@@ -13,7 +13,9 @@
 #      models + venvs are ~8 GB and this disk is nearly full):
 #        tts  :8093  Kinyarwanda (YourTTS) + English (Kokoro) speech
 #        asr  :8092  Kinyarwanda speech recognition / pronunciation scoring
-#      Both bind 127.0.0.1 only. Logs and pidfiles live under
+#      Both bind $SAUTI_VOICE_BIND (default 0.0.0.0): the API runs in a
+#      container and reaches them across the docker bridge, which a
+#      127.0.0.1-only socket refuses. Logs and pidfiles live under
 #      ~/.local/state/sauti/.
 #
 # This script is versioned at scripts/sauti and symlinked to ~/.local/bin/sauti.
@@ -53,6 +55,10 @@ LOCK_FILE="$RUN_DIR/sauti.lock"
 # Host ML voice services.
 TTS_PORT="${SAUTI_TTS_PORT:-8093}"
 ASR_PORT="${SAUTI_ASR_PORT:-8092}"
+# The containerised API talks to these over the docker bridge (host-gateway),
+# so a loopback-only bind is unreachable from it. Set SAUTI_VOICE_BIND=127.0.0.1
+# to keep them off the LAN when running everything on the host instead.
+VOICE_BIND="${SAUTI_VOICE_BIND:-0.0.0.0}"
 TTS_DIR="${SAUTI_TTS_DIR:-$REPO_DIR/services/voice}"
 ASR_DIR="${SAUTI_ASR_DIR:-/home/delta-x/rent-rwanda/services/voice}"
 TTS_UVICORN="${SAUTI_TTS_UVICORN:-/home/delta-x/rent-rwanda/services/voice/.venv-yourtts/bin/uvicorn}"
@@ -325,7 +331,7 @@ start_voice() {
   need_dirs
   { printf '\n===== %s: starting %s at %s =====\n' "$name" "$app" "$(date -Is)"; } >> "$log"
   # 9>&- : do not hand our lock to a server that outlives this command.
-  ( cd "$dir" && exec "$bin" "$app" --host 127.0.0.1 --port "$port" ) >> "$log" 2>&1 9>&- &
+  ( cd "$dir" && exec "$bin" "$app" --host "$VOICE_BIND" --port "$port" ) >> "$log" 2>&1 9>&- &
   local pid=$!
   printf '%s' "$pid" > "$(pidfile "$name")"
   disown "$pid" 2>/dev/null || true
@@ -636,7 +642,7 @@ cmd_status() {
   fi
 
   say ""
-  say "${C_BOLD}voice services${C_RESET} ${C_DIM}(host, 127.0.0.1 only)${C_RESET}"
+  say "${C_BOLD}voice services${C_RESET} ${C_DIM}(host, bound $VOICE_BIND)${C_RESET}"
   local n pid
   for n in "${VOICE_SERVICES[@]}"; do
     pid="$(voice_any_pid "$n" || true)"
