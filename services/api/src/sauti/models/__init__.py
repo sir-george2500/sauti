@@ -6,6 +6,7 @@ from sauti.models.speech import TtsCache
 from sauti.models.learner import (
     Attempt,
     CanDoStatus,
+    NotebookEntry,
     PlacementSession,
     Profile,
     SrsState,
@@ -26,6 +27,7 @@ __all__ = [
     "LlmReplyCache",
     "LlmUsage",
     "Message",
+    "NotebookEntry",
     "PlacementSession",
     "Profile",
     "RefreshToken",

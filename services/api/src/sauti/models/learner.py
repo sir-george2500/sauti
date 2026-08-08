@@ -35,6 +35,7 @@ class Profile(TimestampedBase):
     pace_hours_week: Mapped[int] = mapped_column(default=5)
     placed_level: Mapped[str | None] = mapped_column(Text, nullable=True)  # CEFR
     gamification: Mapped[str] = mapped_column(Text, default="light")  # light | structured
+    daily_goal_minutes: Mapped[int] = mapped_column(default=25)  # daily timer goal, 5..120
 
     user: Mapped[User] = relationship(back_populates="profile")
 
@@ -78,6 +79,25 @@ class CanDoStatus(TimestampedBase):
     confirmed_via_attempt: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("attempts.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class NotebookEntry(TimestampedBase):
+    """Ikaye — a word/phrase the learner chose to keep, with a personal note.
+
+    text/gloss are snapshotted at save time (so entries survive curriculum
+    edits); item_id is a soft link back to the source item for audio playback.
+    """
+
+    __tablename__ = "notebook_entries"
+    __table_args__ = (Index("ix_notebook_entries_user_created", "user_id", "created_at"),)
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    item_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("items.id", ondelete="SET NULL"), nullable=True
+    )
+    text: Mapped[str] = mapped_column(Text)
+    gloss: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class PlacementSession(TimestampedBase):
