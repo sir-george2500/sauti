@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from sauti.schemas.common import PhonemeScore, PronReport
+from sauti.speech.segmentation import mixed_key_text
+
+# The voice slot the mixed-language clips are cached under — not a speaker, a
+# whole span list (see sauti.speech.segmentation).
+MIXED_VOICE = "mixed"
 
 
 class SpeechUnavailableError(RuntimeError):
@@ -31,6 +36,12 @@ class SpeechGateway(Protocol):
     async def tts(self, text: str, voice: str | None = None, cache_key: str | None = None) -> str:
         """Synthesize `text`. Returns either an audio_ref servable by
         GET /api/v1/speech/audio/{ref} or a full http(s) URL (cached CDN asset)."""
+        ...
+
+    async def tts_mixed(self, segments: list[dict]) -> str:
+        """Synthesize [{text, lang}] spans as ONE clip, switching voice per span
+        (sauti.speech.segmentation produces the spans). Same return contract as
+        tts(). Only ever called with text the SERVER authored."""
         ...
 
     async def stt(self, audio_ref: str, lang: str) -> str:
@@ -109,6 +120,12 @@ class StubSpeechBackend:
         if not path.exists():
             self._write_sine_wav(path, seed=_seed("tts", text, voice or ""))
         return ref
+
+    async def tts_mixed(self, segments: list[dict]) -> str:
+        """One placeholder tone for the whole span list — deterministic in the
+        segments, so e2e gets a stable, actually-playable URL for the buddy's
+        play button under SAUTI_FAKE_AI=1."""
+        return await self.tts(mixed_key_text(segments), voice=MIXED_VOICE)
 
     async def stt(self, audio_ref: str, lang: str) -> str:
         # Deterministic stand-in transcript; the real FastConformer replaces this.

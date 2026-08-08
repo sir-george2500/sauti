@@ -1,7 +1,10 @@
 """RealSpeechBackend — the real Kinyarwanda speech stack.
 
-TTS: YourTTS via the sauti voice service (services/voice/tts_app.py, both
-voices) behind the CloudinaryAudioCache, so every phrase is synthesized once.
+TTS: the sauti voice service (services/voice/tts_app.py) behind the
+CloudinaryAudioCache, so every phrase is synthesized once. Two shapes:
+- tts()       — one voice, one phrase (curriculum audio, conversation partner);
+- tts_mixed() — a mixed-language buddy reply: Kinyarwanda spans in YourTTS,
+  English spans in Kokoro, concatenated by the service into ONE clip.
 STT: NeMo FastConformer Kinyarwanda ASR (rent-rwanda, port 8092).
 Scoring: FastConformer transcript vs the item's sentence — deterministic
 alignment scoring in sauti.speech.scoring (no LLM).
@@ -17,10 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from sauti.schemas.common import PronReport
 from sauti.speech.cache import CloudinaryAudioCache
-from sauti.speech.gateway import SpeechUnavailableError, StubSpeechBackend
+from sauti.speech.gateway import MIXED_VOICE, SpeechUnavailableError, StubSpeechBackend
 from sauti.speech.scoring import score_pronunciation
+from sauti.speech.segmentation import mixed_key_text
 
 SYNTH_TIMEOUT_S = 120.0  # cold model load can take a while; warm rw is ~1.4 s
+# A mixed clip is one engine call per span (a buddy reply is 3-6 of them).
+MIXED_SYNTH_TIMEOUT_S = 180.0
 STT_TIMEOUT_S = 60.0  # warm FastConformer is <1 s; leave headroom for cold start
 
 # The gateway is the only place that knows model/voice names (SPEC §4):
@@ -42,6 +48,7 @@ class RealSpeechBackend(StubSpeechBackend):
         asr_url: str = "http://127.0.0.1:8092",
         sessionmaker: async_sessionmaker[AsyncSession] | None = None,
         asr_transport: httpx.AsyncBaseTransport | None = None,
+        voice_transport: httpx.AsyncBaseTransport | None = None,
     ):
         super().__init__(audio_dir, tts_dir)
         self._voice_url = voice_service_url.rstrip("/")
@@ -50,7 +57,13 @@ class RealSpeechBackend(StubSpeechBackend):
         self._asr_url = asr_url.rstrip("/")
         self._sessionmaker = sessionmaker
         self._asr_transport = asr_transport  # test seam (httpx.MockTransport)
+        self._voice_transport = voice_transport  # test seam (httpx.MockTransport)
         self._voice_params: dict[str, str] | None = None  # voice_id -> female|male
+
+    def _voice_client(self, timeout: float) -> httpx.AsyncClient:
+        if self._voice_transport is not None:
+            return httpx.AsyncClient(transport=self._voice_transport, timeout=timeout)
+        return httpx.AsyncClient(timeout=timeout)
 
     def _lang(self, voice: str | None) -> str:
         # All seeded voices are Kinyarwanda (Kigali). When English-gloss or
@@ -81,10 +94,18 @@ class RealSpeechBackend(StubSpeechBackend):
         return (self._voice_params or {}).get(voice, DEFAULT_VOICE_PARAM)
 
     async def _synthesize(self, text: str, lang: str, voice_param: str) -> bytes:
-        async with httpx.AsyncClient(timeout=SYNTH_TIMEOUT_S) as client:
+        async with self._voice_client(SYNTH_TIMEOUT_S) as client:
             resp = await client.post(
                 f"{self._voice_url}/tts",
                 json={"text": text, "lang": lang, "voice": voice_param},
+            )
+            resp.raise_for_status()
+            return resp.content
+
+    async def _synthesize_mixed(self, segments: list[dict]) -> bytes:
+        async with self._voice_client(MIXED_SYNTH_TIMEOUT_S) as client:
+            resp = await client.post(
+                f"{self._voice_url}/tts/mixed", json={"segments": segments}
             )
             resp.raise_for_status()
             return resp.content
@@ -131,3 +152,23 @@ class RealSpeechBackend(StubSpeechBackend):
             return await self._synthesize(text, lang, voice_param)
 
         return await self.cache.get_or_create(text, voice or "", synth)
+
+    async def tts_mixed(self, segments: list[dict]) -> str:
+        """One clip for a mixed-language reply — English spans in Kokoro,
+        Kinyarwanda spans in YourTTS, concatenated by the voice service.
+
+        Cached like any other phrase, but keyed on the WHOLE span list, so a
+        repeated reply costs nothing. Raises on failure; callers degrade (the
+        buddy simply sends no audio frame).
+        """
+        payload = [
+            {"text": s["text"], "lang": s["lang"], "voice": DEFAULT_VOICE_PARAM}
+            if s["lang"] == "rw"
+            else {"text": s["text"], "lang": s["lang"]}
+            for s in segments
+        ]
+
+        async def synth() -> bytes:
+            return await self._synthesize_mixed(payload)
+
+        return await self.cache.get_or_create(mixed_key_text(segments), MIXED_VOICE, synth)
