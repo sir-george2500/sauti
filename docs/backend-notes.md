@@ -45,6 +45,22 @@ forces the scripted `FakeLlmClient` (used by e2e); tests always use it.
   is fine). Frames stream in order: `partner` (with absolute `audio_url`),
   then `goal` per goal met, then `coach` notes (praise first, ≤1 fix,
   fixes never on the learner's first turn).
+- **WS** `/api/v1/ws/buddy?token=<access JWT>` (Mwarimu). Frames:
+  `{type:"buddy", id?, text, gloss?}` first and never delayed, then
+  `{type:"action", action}` chips, then `{type:"buddy_audio", id, audio_url}`
+  carrying the spoken reply. An `id` on the reply is a **promise** that a clip
+  was ordered — a turn that never started synthesizing (LLM unreachable,
+  nothing speakable) sends none, and a synthesis that fails simply produces no
+  audio frame. Chat is unaffected either way.
+- **The buddy's voice switches mid-reply.** Mwarimu writes English with
+  Kinyarwanda quoted inside, so `sauti.speech.segmentation.segment_reply()`
+  (pure, unit-tested) cuts the reply into `[{text, lang}]` spans — a quoted
+  span is `rw` when it matches a curriculum `items.sentence` the buddy was
+  shown or contains a Kinyarwanda marker, else `en`. The spans go to the voice
+  service's `POST /tts/mixed`, which renders Kinyarwanda in YourTTS and English
+  in Kokoro and returns ONE 24 kHz WAV. Cached in Cloudinary keyed on the whole
+  span list, so a repeated reply costs nothing. Only server-authored text is
+  ever synthesized.
 - **Public (no Authorization header)**: `GET /tts/{item_id}` (302 →
   `/api/v1/speech/audio/{ref}`), `GET /api/v1/speech/audio/{ref}`, and
   `PUT` to the returned `upload_url` (unguessable ref = signed-URL stand-in).
@@ -91,7 +107,7 @@ forces the scripted `FakeLlmClient` (used by e2e); tests always use it.
 
 ## Tests
 
-`uv run pytest` → **91 passed** (41 unit / 50 integration; no skips).
+`uv run pytest` → **264 passed** (147 unit / 117 integration; no skips).
 Integration runs against a real postgres:16-alpine testcontainer with real
 Alembic migrations + real seed; `FakeLlmClient` scripted per the rent-rwanda
 idiom (branches on conversation state, not call counts). No paid API is ever
