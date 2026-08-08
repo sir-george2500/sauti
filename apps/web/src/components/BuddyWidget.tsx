@@ -73,6 +73,7 @@ function ActionChip({ action, onGo }: { action: BuddyAction; onGo: (href: string
     <button
       type="button"
       data-testid="buddy-action"
+      data-href={href}
       onClick={() => onGo(href)}
       className="cursor-pointer rounded-full border border-accent-soft-line bg-accent-soft px-3 py-1.5 text-[12.5px] font-semibold text-accent-deep transition-colors hover:border-accent hover:bg-[#f3d9c6]"
     >
