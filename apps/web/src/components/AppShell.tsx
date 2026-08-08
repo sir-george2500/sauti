@@ -197,6 +197,12 @@ function SidebarNav() {
           isActive: (p) => p.startsWith("/progress"),
         },
         {
+          label: "Notebook",
+          href: "/notebook",
+          testid: "nav-notebook",
+          isActive: (p) => p.startsWith("/notebook"),
+        },
+        {
           label: "Placement",
           href: "/placement",
           isActive: (p) => p.startsWith("/placement"),

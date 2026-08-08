@@ -7,6 +7,7 @@ import { getVocabDeck, postAttempt } from "@/lib/api/endpoints";
 import { prefetchAudio } from "@/lib/audio-prefetch";
 import { reviewAttemptPayload } from "@/lib/srs";
 import { AudioButton } from "@/components/AudioButton";
+import { SaveToNotebook } from "@/components/SaveToNotebook";
 import { btnGhost, btnPrimary, Card, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
 import type { SrsGradeLabel } from "@/lib/api/types";
 
@@ -85,6 +86,7 @@ export default function DeckReviewPage({ params }: { params: Promise<{ tag: stri
           <div className="flex min-h-[220px] flex-col items-center justify-center gap-4 py-6 text-center">
             <div className="flex items-center gap-3.5">
               <AudioButton itemId={current.id} src={current.audio_url} />
+              <SaveToNotebook itemId={current.id} />
               <p className="ky text-[26px] leading-snug font-semibold sm:text-[30px]">
                 {current.sentence}
               </p>

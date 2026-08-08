@@ -11,6 +11,7 @@ import {
   uploadAudio,
 } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
+import { SaveToNotebook } from "@/components/SaveToNotebook";
 import { Card, CardLabel, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
 import type { PronReport } from "@/lib/api/types";
 
@@ -123,7 +124,10 @@ export default function PronunciationPage({
       </div>
 
       <Card testid="target-phrase">
-        <CardLabel>Target phrase</CardLabel>
+        <div className="flex items-start justify-between gap-3">
+          <CardLabel>Target phrase</CardLabel>
+          <SaveToNotebook itemId={item.id} />
+        </div>
         <p className="ky mt-3 text-[26px] leading-snug font-semibold sm:text-[30px]">
           {item.sentence}
         </p>

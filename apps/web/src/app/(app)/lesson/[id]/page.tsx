@@ -7,6 +7,7 @@ import { getRoadmap, lessonFromRoadmap, postAttempt } from "@/lib/api/endpoints"
 import { prefetchAudio } from "@/lib/audio-prefetch";
 import { lessonQuiz } from "@/lib/quiz";
 import { AudioButton } from "@/components/AudioButton";
+import { SaveToNotebook } from "@/components/SaveToNotebook";
 import { Markdown } from "@/components/Markdown";
 import { Quiz } from "@/components/Quiz";
 import {
@@ -80,6 +81,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
                 <span className="flex-none font-mono text-[10px] text-ink-faint uppercase">
                   {VOICES[i % VOICES.length]}
                 </span>
+                <SaveToNotebook itemId={item.id} />
               </li>
             ))}
           </ul>
