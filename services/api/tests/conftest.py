@@ -91,6 +91,7 @@ def test_settings(pg_url: str, clean_db: None, tmp_path: Path) -> Settings:
         # High caps by default; the rate-limit test builds its own app.
         rate_limit_auth_max=1000,
         rate_limit_conversation_max=1000,
+        rate_limit_buddy_max=1000,
         audio_dir=str(tmp_path / "audio"),
         tts_dir=str(tmp_path / "tts"),
     )
