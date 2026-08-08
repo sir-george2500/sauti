@@ -38,6 +38,13 @@ class ProfileOut(BaseModel):
     pace_hours_week: int
     placed_level: Cefr | None = None
     gamification: str
+    daily_goal_minutes: int = 25
+
+
+class ProfilePatchIn(BaseModel):
+    """PATCH /me/profile — the daily study-timer goal, 5–120 minutes."""
+
+    daily_goal_minutes: int = Field(ge=5, le=120)
 
 
 class UserOut(BaseModel):

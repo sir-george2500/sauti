@@ -22,6 +22,7 @@ from sauti.routers import (
     health,
     learning,
     me,
+    notebook,
     placement,
     scenarios,
     speech,
@@ -99,12 +100,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     # CORS: frontend origin only, with credentials (refresh cookie) and the
-    # audio PUT to the upload URL. No DELETE routes exist — don't allow it.
+    # audio PUT to the upload URL. PATCH/DELETE exist for the notebook and
+    # profile-goal routes only.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.app_frontend_url],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
@@ -125,6 +127,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         health.router,
         auth.router,
         me.router,
+        notebook.router,
         courses.router,
         learning.router,
         placement.router,

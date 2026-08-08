@@ -32,6 +32,7 @@ DYNAMIC_TABLES = [
     "placement_sessions",
     "srs_state",
     "attempts",
+    "notebook_entries",
     "refresh_tokens",
     "email_verification_tokens",
     "password_reset_tokens",
