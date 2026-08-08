@@ -88,6 +88,17 @@ backend lands a different shape, update that file + this list together.
 - **`GET /tts/{item_id}`** is used directly as an `<audio>`/`Audio` `src`, so
   it must be reachable without an `Authorization` header (cookie or public in
   MVP) — an audio element can't send a bearer token.
+- **Study buddy (Mwarimu)**: `ws(s)://…/api/v1/ws/buddy?token=…`, client sends
+  `{text}` (capped at 500 chars client-side, truncated again server-side).
+  Server frames: `{type:"buddy", text, gloss?}`, `{type:"action", action:
+  {kind:"navigate", href, label}}`, `{type:"error", text}`. The widget mounts
+  once in `AppShell` (inside `RequireAuth`), so it exists on every authenticated
+  route and on none of the auth pages. Conversation state lives in
+  `src/lib/buddy/store.ts` (module store + sessionStorage, wiped on sign-out);
+  the socket connects on first open, reconnects with bounded backoff after a
+  drop, and closes after 3 idle minutes with the panel shut. Action hrefs are
+  re-checked client-side by `safeAppHref()` — only in-app absolute paths are
+  followed, the same open-redirect rule as the login `?next=` param.
 - **Listening practice** is lesson-based (`/practice/listening/[lessonId]`):
   the lesson's items are the dialogue lines/transcript and its `quick_check`
   doubles as the comprehension MCQ (no dedicated listening payload in §5).
@@ -107,4 +118,7 @@ Stable `data-testid`s on all interactive elements and landmarks, including:
 `grade-again|hard|good|easy`, `review-done`, `skill-{skill}`, `cando-item`,
 `cando-count`, `begin-placement`, `start-at-a1`, `placement-answer`,
 `placement-submit`, `placement-result`, `login-*`, `register-*`,
+`buddy-fab`, `buddy-panel`, `buddy-close`, `buddy-messages`, `buddy-message`
+(with `data-role="learner|buddy"`), `buddy-gloss`, `buddy-typing`,
+`buddy-action` (with `data-href`), `buddy-opener`, `buddy-input`, `buddy-send`,
 `course-{CODE}`, `pace-{hours}`, `sign-out`, `nav-*`.
