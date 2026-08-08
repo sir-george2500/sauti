@@ -1,3 +1,12 @@
+{
+	# No admin API and no automatic HTTPS: this is http-only on one machine.
+	# (The global options block has to be the very first thing in a Caddyfile,
+	# comments included — hence the explanation below rather than above.)
+	admin off
+	auto_https off
+	persist_config off
+}
+
 # Single front door for the local stack: http://sauti.localhost (and
 # http://localhost / http://127.0.0.1 — the site block is bound to the port,
 # not a hostname, so every local name that reaches :80 is served).
@@ -5,14 +14,6 @@
 # One origin for the browser means one CORS origin for the API and no
 # mixed-port cookie games: the refresh cookie set by /api/v1/auth is a plain
 # host cookie on sauti.localhost.
-
-{
-	# No admin API and no automatic HTTPS: this is http-only on one machine.
-	admin off
-	auto_https off
-	persist_config off
-}
-
 :80 {
 	encode gzip
 
