@@ -8,7 +8,7 @@ import {
   updateNotebookEntry,
 } from "@/lib/api/endpoints";
 import { NOTEBOOK_KEY, useNotebook, withEntry } from "@/lib/notebook";
-import { AudioButton } from "@/components/AudioButton";
+import { AudioControls } from "@/components/AudioButton";
 import {
   btnGhost,
   btnPrimary,
@@ -61,7 +61,7 @@ function EntryRow({ entry }: { entry: NotebookEntry }) {
       className="flex items-start gap-3.5 border-b border-line py-4 last:border-b-0 last:pb-0 first:pt-0"
     >
       {entry.item_id ? (
-        <AudioButton
+        <AudioControls
           itemId={entry.item_id}
           src={entry.audio_url}
           size="sm"

@@ -28,6 +28,17 @@ backend lands a different shape, update that file + this list together.
   the cached Cloudinary TTS URL, playable directly as an `<audio>` src — no
   `GET /tts/{item_id}` round trip. `null` when not yet cached; fall back to
   the `/tts` route then. Resolved server-side with one bulk query per request.
+- **`items[].pronunciation`** (roadmap embedded lessons AND `/vocab/decks/{tag}`):
+  an English-readable respelling with the stressed syllable capitalised —
+  `Mwaramutse` → `mwah-rah-MOOT-seh`, `Ikinyarwanda` → `ee-chee-nyar-WAHN-dah`.
+  Rendered ABOVE the Kinyarwanda as a `<ruby>`/`<rt>` annotation
+  (`components/PronunciationGuide.tsx`, `.respell` in globals.css), word by
+  word when the token counts line up, otherwise once over the whole phrase.
+  `null`/absent renders the plain line with no wrapper and no reserved space.
+  Shown on: lesson "Hear it used" rows, the vocab review card, the
+  pronunciation target phrase, and listening transcript lines. NOT on buddy or
+  conversation-partner turns — that text is free-form model output with no
+  respelling to go with it.
 - **`lesson.quiz`**: 4–6 questions per KIN lesson —
   `[{ord, kind: "grammar"|"vocab"|"usage"|"culture", question,
   options: [{text, correct}], explanation, item_id?}]`. `explanation` is the
@@ -112,6 +123,18 @@ backend lands a different shape, update that file + this list together.
   are guarded by `safeAudioUrl()` (http(s) or same-origin path only), and all
   playback runs through `src/lib/audio/player.ts` — one clip at a time app-wide,
   stopped when the panel closes, on mute, or on a guidance-chip navigation.
+- **Playback speed**: one rate constant for the whole app — `SLOW_RATE = 0.7`
+  in `src/lib/audio/rate.ts`. Every play control ships with a small turtle
+  companion (`play-slow`) that plays the same clip at that rate, and the
+  sidebar footer carries `slow-audio-toggle` (`data-on`, localStorage
+  `sauti.audio.slow.v1`, default OFF) which makes every plain play button slow
+  as well. A screen that owns its own speed control (the listening player)
+  passes an explicit `rate`, which beats the preference so its own label can't
+  lie; that player's segmented control starts on "0.7× learner" when the
+  preference is on. Slowing happens in the browser (`playbackRate` with
+  `preservesPitch` on, i.e. WSOLA time-stretch); below ~0.7× it starts to
+  smear consonants. Genuinely slower speech would have to be synthesized
+  server-side — `services/voice/tts_app.py` has no speed parameter today.
 - **Listening practice** is lesson-based (`/practice/listening/[lessonId]`):
   the lesson's items are the dialogue lines/transcript and its `quick_check`
   doubles as the comprehension MCQ (no dedicated listening payload in §5).
@@ -136,4 +159,7 @@ Stable `data-testid`s on all interactive elements and landmarks, including:
 `buddy-action` (with `data-href`), `buddy-opener`, `buddy-input`, `buddy-send`,
 `buddy-play` (with `data-state="pending|ready|playing"`), `buddy-sound-toggle`
 (with `data-on`),
-`course-{CODE}`, `pace-{hours}`, `sign-out`, `nav-*`.
+`course-{CODE}`, `pace-{hours}`, `sign-out`, `nav-*`,
+`pronunciation-guide` (one `<rt>` per annotated word), `respell-base`,
+`play-slow` (the turtle beside every play button), `listening-speed`,
+`slow-audio-toggle` (with `data-on`).

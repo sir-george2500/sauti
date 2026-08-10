@@ -4,6 +4,9 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getScenarios } from "@/lib/api/endpoints";
 import { conversationWsUrl } from "@/lib/api/client";
+import { AudioControls } from "@/components/AudioButton";
+import { playbackRate } from "@/lib/audio/rate";
+import { useSlowAudio } from "@/lib/audio/rate-store";
 import { Card, CardLabel, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
 import type { ConversationServerMessage, Scenario } from "@/lib/api/types";
 
@@ -38,54 +41,21 @@ function GlossToggle({ gloss }: { gloss: string }) {
   );
 }
 
-/** Small play button for a partner message that carries audio. */
+/**
+ * Play + "slower" for a partner turn. The partner is the model talking at
+ * full conversational speed — the single place a learner most wants a second
+ * pass at half pace — so it gets the same pair as every other Kinyarwanda
+ * line, and rides the shared audio channel (one voice at a time).
+ */
 function MessageAudio({ url }: { url: string }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-      audioRef.current = null;
-    };
-  }, []);
-
-  const toggle = () => {
-    if (playing) {
-      audioRef.current?.pause();
-      setPlaying(false);
-      return;
-    }
-    if (!audioRef.current) {
-      const audio = new Audio(url);
-      audio.addEventListener("ended", () => setPlaying(false));
-      audio.addEventListener("error", () => setPlaying(false));
-      audioRef.current = audio;
-    }
-    void audioRef.current.play().catch(() => setPlaying(false));
-    setPlaying(true);
-  };
-
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      data-testid="message-audio"
-      aria-label={playing ? "Pause message audio" : "Play message audio"}
-      className={`mt-1.5 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-accent transition-colors ${
-        playing ? "bg-accent text-on-accent" : "bg-transparent text-accent hover:bg-accent-soft"
-      }`}
-    >
-      {playing ? (
-        <svg viewBox="0 0 16 16" className="h-2 w-2 fill-current" aria-hidden>
-          <rect x="3" y="3" width="10" height="10" rx="1" />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 16 16" className="ml-px h-2 w-2 fill-current" aria-hidden>
-          <path d="M4 2.5v11a.6.6 0 0 0 .92.5l8.4-5.5a.6.6 0 0 0 0-1L4.92 2a.6.6 0 0 0-.92.5Z" />
-        </svg>
-      )}
-    </button>
+    <AudioControls
+      src={url}
+      size="xs"
+      testid="message-audio"
+      label="Play message audio"
+      className="mt-1.5"
+    />
   );
 }
 
@@ -103,6 +73,13 @@ function ConversationChat({ scenario }: { scenario: Scenario }) {
   // re-render (or an older message) never replays audio in a loop.
   const autoPlayedRef = useRef(0);
   const autoAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Read once per render and kept in a ref: the autoplay effect must not
+  // re-fire (and replay a turn) just because the preference changed.
+  const alwaysSlow = useSlowAudio();
+  const alwaysSlowRef = useRef(alwaysSlow);
+  useEffect(() => {
+    alwaysSlowRef.current = alwaysSlow;
+  }, [alwaysSlow]);
 
   const append = useCallback((entry: Omit<ChatEntry, "id">) => {
     setEntries((prev) => [...prev, { ...entry, id: nextId.current++ }]);
@@ -174,6 +151,7 @@ function ConversationChat({ scenario }: { scenario: Scenario }) {
     try {
       autoAudioRef.current?.pause();
       const audio = new Audio(newest.audioUrl as string);
+      audio.playbackRate = playbackRate({ alwaysSlow: alwaysSlowRef.current });
       autoAudioRef.current = audio;
       void audio.play().catch(() => {});
     } catch {

@@ -11,7 +11,9 @@ import {
   uploadAudio,
 } from "@/lib/api/endpoints";
 import { AudioButton } from "@/components/AudioButton";
+import { Respelled } from "@/components/PronunciationGuide";
 import { SaveToNotebook } from "@/components/SaveToNotebook";
+import { NORMAL_RATE, SLOW_RATE_LABEL } from "@/lib/audio/rate";
 import { Card, CardLabel, ErrorNote, Kicker, LoadingNote, PageTitle } from "@/components/ui";
 import type { PronReport } from "@/lib/api/types";
 
@@ -128,21 +130,43 @@ export default function PronunciationPage({
           <CardLabel>Target phrase</CardLabel>
           <SaveToNotebook itemId={item.id} />
         </div>
-        <p className="ky mt-3 text-[26px] leading-snug font-semibold sm:text-[30px]">
-          {item.sentence}
-        </p>
+        <Respelled
+          text={item.sentence}
+          guide={item.pronunciation}
+          className="ky mt-3 text-[26px] leading-snug font-semibold sm:text-[30px]"
+        />
         <p className="mt-1 text-[13px] text-ink-soft">{item.gloss}</p>
         <div className="mt-5 flex flex-wrap items-center gap-x-8 gap-y-3">
           <div className="flex min-w-[220px] flex-1 items-center gap-3">
-            <AudioButton itemId={item.id} size="sm" testid="play-native" />
+            {/* This screen is *about* comparing the two speeds, so the native
+                control stays at full speed even with the app-wide slow
+                preference on — the slowed take is the button beside it. */}
+            <AudioButton
+              itemId={item.id}
+              src={item.audio_url}
+              rate={NORMAL_RATE}
+              size="sm"
+              testid="play-native"
+              label="Play at native speed"
+            />
             <Waveform bars={NATIVE_BARS} color="bg-accent" />
             <span className="flex-none font-mono text-[10px] text-ink-soft uppercase">
               Native · Kigali
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <AudioButton itemId={item.id} slow size="sm" testid="play-slow" />
-            <span className="font-mono text-[10px] text-ink-soft uppercase">Slowed down</span>
+            <AudioButton
+              itemId={item.id}
+              src={item.audio_url}
+              slow
+              size="sm"
+              glyph="turtle"
+              testid="play-slow"
+              label="Listen slowed down"
+            />
+            <span className="font-mono text-[10px] text-ink-soft uppercase">
+              Slowed down · {SLOW_RATE_LABEL}
+            </span>
           </div>
         </div>
       </Card>

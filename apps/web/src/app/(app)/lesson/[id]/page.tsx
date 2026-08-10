@@ -6,7 +6,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { getRoadmap, lessonFromRoadmap, postAttempt } from "@/lib/api/endpoints";
 import { prefetchAudio } from "@/lib/audio-prefetch";
 import { lessonQuiz } from "@/lib/quiz";
-import { AudioButton } from "@/components/AudioButton";
+import { AudioControls } from "@/components/AudioButton";
+import { Respelled } from "@/components/PronunciationGuide";
 import { SaveToNotebook } from "@/components/SaveToNotebook";
 import { Markdown } from "@/components/Markdown";
 import { Quiz } from "@/components/Quiz";
@@ -73,9 +74,17 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           <ul className="mt-4 grid gap-4">
             {items.map((item, i) => (
               <li key={item.id} className="flex items-center gap-3.5" data-testid="example-row">
-                <AudioButton itemId={item.id} src={item.audio_url} label={`Play “${item.sentence}”`} />
+                <AudioControls
+                  itemId={item.id}
+                  src={item.audio_url}
+                  label={`Play “${item.sentence}”`}
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="ky text-lg">{item.sentence}</p>
+                  <Respelled
+                    text={item.sentence}
+                    guide={item.pronunciation}
+                    className="ky text-lg"
+                  />
                   <p className="mt-0.5 text-[12.5px] text-ink-soft">{item.gloss}</p>
                 </div>
                 <span className="flex-none font-mono text-[10px] text-ink-faint uppercase">

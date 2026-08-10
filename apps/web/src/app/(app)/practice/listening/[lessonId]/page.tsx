@@ -6,6 +6,9 @@ import { getRoadmap, lessonFromRoadmap } from "@/lib/api/endpoints";
 import { prefetchAudio } from "@/lib/audio-prefetch";
 import { AudioButton } from "@/components/AudioButton";
 import { Mcq } from "@/components/Mcq";
+import { Respelled } from "@/components/PronunciationGuide";
+import { NORMAL_RATE, SLOW_RATE, SLOW_RATE_LABEL } from "@/lib/audio/rate";
+import { useSlowAudio } from "@/lib/audio/rate-store";
 import { Card, CardLabel, ErrorNote, Kicker, Lead, LoadingNote, PageTitle } from "@/components/ui";
 
 const SPEAKERS = ["Emmanuel", "Diane"] as const;
@@ -26,8 +29,14 @@ export default function ListeningPage({
   );
   const items = useMemo(() => view?.lesson.items ?? [], [view]);
   const [played, setPlayed] = useState(false);
-  const [speed, setSpeed] = useState<0 | 1>(1);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
+  // This screen owns its speed: the segmented control is an explicit choice
+  // for this listen. Until it is touched it follows the app-wide preference,
+  // so "always slowly" lands on the learner speed without contradicting the
+  // label sitting right under the player.
+  const alwaysSlow = useSlowAudio();
+  const [chosenSpeed, setChosenSpeed] = useState<0 | 1 | null>(null);
+  const speed: 0 | 1 = chosenSpeed ?? (alwaysSlow ? 0 : 1);
 
   // Warm the lesson's lines so the first play is instant.
   useEffect(() => {
@@ -61,7 +70,7 @@ export default function ListeningPage({
                 itemId={item.id}
                 src={item.audio_url}
                 tone="gold"
-                slow={speed === 0}
+                rate={speed === 0 ? SLOW_RATE : NORMAL_RATE}
                 testid="listening-play"
                 label={`Play line ${i + 1}`}
               />
@@ -81,11 +90,12 @@ export default function ListeningPage({
           ))}
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {(["0.7× learner", "1× street"] as const).map((label, i) => (
+          {([`${SLOW_RATE_LABEL} learner`, "1× street"] as const).map((label, i) => (
             <button
               key={label}
               type="button"
-              onClick={() => setSpeed(i as 0 | 1)}
+              data-testid="listening-speed"
+              onClick={() => setChosenSpeed(i as 0 | 1)}
               aria-pressed={speed === i}
               className={`cursor-pointer rounded-full px-3.5 py-[7px] text-xs font-semibold transition-colors ${
                 speed === i
@@ -134,7 +144,11 @@ export default function ListeningPage({
                   {SPEAKERS[i % 2]}
                 </span>
                 <div>
-                  <p className="ky text-[16.5px]">{item.sentence}</p>
+                  <Respelled
+                    text={item.sentence}
+                    guide={item.pronunciation}
+                    className="ky text-[16.5px]"
+                  />
                   <p className="mt-0.5 text-[12.5px] text-ink-soft">{item.gloss}</p>
                 </div>
               </li>
