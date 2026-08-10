@@ -181,6 +181,12 @@ OVERRIDES: dict[str, str] = {
     "kimironko": "kee-mee-ROHN-koh",  # Kigali suburb, same caveat as Kigali
     # -- Tone the penultimate default gets wrong (seed-confirmed). --
     "muraho": "moo-rah-HOH",      # phoneme_ref marks H on the final syllable
+    # -- Words the seed marks inconsistently across items. A learner must see
+    #    one spelling per word, so these are pinned rather than left to the
+    #    editorial tone marks. See NEEDS_NATIVE_REVIEW. --
+    "angahe": "ahn-GAH-heh",      # H on 'nga' in one item, on 'a' in another
+    "bangahe": "bahn-GAH-heh",
+    "ni": "nee",                  # toneless copula; one item marks it H
 }
 
 

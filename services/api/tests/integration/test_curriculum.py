@@ -237,6 +237,93 @@ class TestItemAudioUrls:
         assert len(tts_queries) == 1, tts_queries
 
 
+class TestItemPronunciation:
+    """Item payloads carry an English respelling of the sentence, because
+    Kinyarwanda spelling is not Kinyarwanda pronunciation (`Ikinyarwanda` is
+    said ee-chee-nyah-RWAHN-dah). It is derived from data already on the item,
+    so it must cost nothing."""
+
+    @staticmethod
+    def _roadmap_items(body: dict) -> dict:
+        return {
+            i["sentence"]: i
+            for lvl in body["levels"]
+            for u in lvl["units"]
+            for les in u["lessons"]
+            for i in les["items"]
+        }
+
+    async def test_roadmap_items_carry_pronunciation(self, client):
+        auth = await register_and_login(client)
+        r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+        assert r.status_code == 200
+        items = self._roadmap_items(r.json())
+        assert items["Mwaramutse!"]["pronunciation"] == "mwah-rah-MOOT-seh!"
+        assert items["Muraho!"]["pronunciation"] == "moo-rah-HOH!"
+        assert items["Urakoze cyane."]["pronunciation"] == "oo-rah-KOH-zeh CHAH-neh."
+        assert (
+            items["Umwarimu yigisha Ikinyarwanda."]["pronunciation"]
+            == "oo-mwah-REE-moo yee-GEE-shah ee-chee-nyah-RWAHN-dah."
+        )
+        # Every seeded item gets one — a blank line in the UI would be a bug.
+        assert all(i["pronunciation"] for i in items.values())
+
+    async def test_vocab_deck_items_carry_pronunciation(self, client):
+        auth = await register_and_login(client)
+        r = await client.get("/api/v1/vocab/decks/greetings", headers=auth["headers"])
+        assert r.status_code == 200
+        items = {i["sentence"]: i for i in r.json()["items"]}
+        assert items["Mwiriwe neza."]["pronunciation"] == "mwee-REE-weh NEH-zah."
+        assert items["Ijoro ryiza."]["pronunciation"] == "ee-JOH-roh REE-zah."
+        assert all(i["pronunciation"] for i in r.json()["items"])
+
+    async def test_the_same_word_reads_the_same_way_across_endpoints(self, client):
+        auth = await register_and_login(client)
+        roadmap = await client.get("/api/v1/roadmap", headers=auth["headers"])
+        deck = await client.get("/api/v1/vocab/decks/market", headers=auth["headers"])
+        items = self._roadmap_items(roadmap.json())
+        for i in deck.json()["items"]:
+            assert i["pronunciation"] == items[i["sentence"]]["pronunciation"]
+
+    async def test_pronunciation_costs_no_extra_query(self, app, client, monkeypatch):
+        """Derived at serialization time from `sentence` + `phoneme_ref`, both
+        already loaded. Turning the respelling off must not change the SQL."""
+        from sqlalchemy import event
+
+        auth = await register_and_login(client)
+
+        async def sql_for(path: str) -> tuple[list[str], dict]:
+            statements: list[str] = []
+
+            def record(conn, cursor, statement, params, context, executemany):
+                statements.append(statement)
+
+            event.listen(app.state.engine.sync_engine, "before_cursor_execute", record)
+            try:
+                r = await client.get(path, headers=auth["headers"])
+                assert r.status_code == 200
+                return statements, r.json()
+            finally:
+                event.remove(app.state.engine.sync_engine, "before_cursor_execute", record)
+
+        for path, has_pron in (
+            ("/api/v1/roadmap", lambda b: all(
+                i["pronunciation"] for i in TestItemPronunciation._roadmap_items(b).values()
+            )),
+            ("/api/v1/vocab/decks/food", lambda b: all(i["pronunciation"] for i in b["items"])),
+        ):
+            await client.get(path, headers=auth["headers"])  # warm any first-call SQL
+            with_pron, body = await sql_for(path)
+            assert has_pron(body), path  # the field really is being computed
+
+            monkeypatch.setattr("sauti.schemas.curriculum.respell", lambda *a, **k: None)
+            without_pron, body = await sql_for(path)
+            monkeypatch.undo()
+            assert not has_pron(body), path  # ...and the patch really disabled it
+
+            assert with_pron == without_pron, path
+
+
 class TestScenarios:
     async def test_a1_scenarios_listed_with_opening_lines(self, client):
         auth = await register_and_login(client)
