@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from sauti.models import Item, Lesson, Level, SrsState, Unit
+from sauti.models import Course, Item, Lesson, Level, SrsState, Unit
 from sauti.schemas.curriculum import ItemOut
 from sauti.schemas.learning import (
     VocabDeckItemsOut,
@@ -42,23 +42,29 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
 
 
-async def _deck_items(db: AsyncSession, course_id: uuid.UUID) -> dict[str, list[Item]]:
-    """Items of the course grouped by their unit's situation_tag (curriculum order)."""
-    units = list(
-        await db.scalars(
-            select(Unit)
+async def _deck_items(
+    db: AsyncSession, course_id: uuid.UUID
+) -> tuple[dict[str, list[Item]], str | None]:
+    """Items grouped by their unit's situation_tag (curriculum order), and the
+    course code — carried out of the SAME query, since the pronunciation
+    respelling is only valid for Kinyarwanda and must cost nothing to gate."""
+    rows = (
+        await db.execute(
+            select(Unit, Course.code)
             .join(Level, Level.id == Unit.level_id)
+            .join(Course, Course.id == Level.course_id)
             .where(Level.course_id == course_id)
             .order_by(Level.ord, Unit.ord)
             .options(selectinload(Unit.lessons).selectinload(Lesson.items))
         )
-    )
+    ).all()
     decks: dict[str, list[Item]] = {}
-    for unit in units:
+    course_code = rows[0][1] if rows else None
+    for unit, _code in rows:
         bucket = decks.setdefault(unit.situation_tag, [])
         for lesson in unit.lessons:
             bucket.extend(lesson.items)
-    return decks
+    return decks, course_code
 
 
 async def _srs_by_item(db: AsyncSession, user_id: uuid.UUID) -> dict[uuid.UUID, SrsState]:
@@ -69,7 +75,7 @@ async def _srs_by_item(db: AsyncSession, user_id: uuid.UUID) -> dict[uuid.UUID, 
 
 
 async def list_decks(db: AsyncSession, user_id: uuid.UUID, course_id: uuid.UUID) -> VocabDecksOut:
-    decks = await _deck_items(db, course_id)
+    decks, _course_code = await _deck_items(db, course_id)
     now = datetime.now(timezone.utc)
     states = await _srs_by_item(db, user_id)
     out: list[VocabDeckOut] = []
@@ -101,7 +107,7 @@ async def list_decks(db: AsyncSession, user_id: uuid.UUID, course_id: uuid.UUID)
 async def deck_detail(
     db: AsyncSession, user_id: uuid.UUID, course_id: uuid.UUID, tag: str
 ) -> VocabDeckItemsOut | None:
-    decks = await _deck_items(db, course_id)
+    decks, course_code = await _deck_items(db, course_id)
     items = decks.get(tag)
     if items is None:
         return None
@@ -112,7 +118,9 @@ async def deck_detail(
     audio_urls = await audio_urls_for_items(db, items)  # one bulk query, never per-item
     # `pronunciation` is derived in-process from sentence + phoneme_ref — no
     # further query, no N+1.
-    out_items = [ItemOut.from_item(i, audio_urls.get(i.id)) for i in items]
+    out_items = [
+        ItemOut.from_item(i, audio_urls.get(i.id), course_code=course_code) for i in items
+    ]
     return VocabDeckItemsOut(
         tag=tag,
         title=title,

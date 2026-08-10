@@ -51,11 +51,15 @@ class TestOwnersTargets:
     def test_matches_exactly(self, sentence, expected):
         assert respell(sentence) == expected
 
-    def test_ikinyarwanda_keeps_the_nasal_with_its_own_syllable(self):
-        # The owner wrote "ee-chee-nyar-WAHN-dah"; `rw` is one onset [rʷ], so
-        # the r belongs to the stressed syllable, not to the one before it.
-        # Everything else — the ki -> "chi", the coda n, the capital — matches.
-        assert respell("Ikinyarwanda") == "ee-chee-nyah-RWAHN-dah"
+    def test_ikinyarwanda_is_not_ee_chee_whatever_the_ear_says(self):
+        """The owner wrote "ee-chee-nyar-WAHN-dah". Two deliberate departures:
+
+        `ki` is a palatal STOP [c], not the affricate [tʃ] — the internal proof
+        is that [tʃi] already exists natively (gucika) alongside [ci] (gukina),
+        so they cannot be the same sound. And `rw` is one onset, so the r goes
+        with the syllable it starts, not with the one before.
+        """
+        assert respell("Ikinyarwanda") == "ee-kyee-nyah-RWAHN-dah"
 
 
 class TestPalatalisation:
@@ -64,30 +68,45 @@ class TestPalatalisation:
     @pytest.mark.parametrize(
         "kinyarwanda,expected",
         [
-            # k + i -> "chi"
-            ("iki", "EE-chee"),
-            ("kimwe", "CHEE-mweh"),
-            ("bakinira", "bah-chee-NEE-rah"),
-            ("ibitoki", "ee-bee-TOH-chee"),
-            # k + e -> "che"
-            ("keza", "CHEH-zah"),
-            ("make", "MAH-cheh"),
+            # k + i -> "kyi": the palatal stop, not "ch"
+            ("iki", "EE-kyee"),
+            ("kimwe", "KYEE-mweh"),
+            ("bakinira", "bah-kyee-NEE-rah"),
+            # ...positionally general, including word-finally (urutoki)
+            ("ibitoki", "ee-bee-TOH-kyee"),
+            # k + e is the same process, not a weaker one
+            ("keza", "KYEH-zah"),
+            ("make", "MAH-kyeh"),
+            # g palatalises identically: [gi ge] -> [ɡʲi~ɟi], [ɡʲe~ɟe]
+            ("igitabo", "ee-gyee-TAH-boh"),
+            ("gitondo", "gyee-TOHN-doh"),
+            ("genda", "GYEHN-dah"),
+            ("tugende", "too-GYEHN-deh"),
+            ("yigisha", "yee-GYEE-shah"),
+            # ...and not before a back vowel
+            ("gatanu", "gah-TAH-noo"),
+            ("magana", "mah-GAH-nah"),
+            ("ingofero", "een-goh-FEH-roh"),
             # k elsewhere stays k
             ("ikawa", "ee-KAH-wah"),
             ("komeza", "koh-MEH-zah"),
             ("kuruta", "koo-ROO-tah"),
-            ("gikoni", "gee-KOH-nee"),
+            ("gikoni", "gyee-KOH-nee"),
             # ...including before a glide, where no front vowel follows it
             ("kwishyura", "kwee-SHOO-rah"),
-            # `cy` and bare `c` both spell the same "ch"
-            ("cyane", "CHAH-neh"),
-            ("cyiza", "CHEE-zah"),
-            ("icyayi", "ee-CHAH-yee"),
-            ("icyumba", "ee-CHOOM-bah"),
-            ("cyenda", "CHEHN-dah"),
+            # `cy` is the palatal stop [c] — the SAME sound as palatalised k
+            ("cyane", "KYAH-neh"),
+            ("cyiza", "KYEE-zah"),
+            ("icyayi", "ee-KYAH-yee"),
+            ("icyumba", "ee-KYOOM-bah"),
+            ("cyenda", "KYEHN-dah"),
+            ("ntacyo", "NTAH-kyoh"),
+            # ...but bare `c` is the affricate [tʃ], "ch as in church", and the
+            # two are NOT predictable from the following vowel: both occur
+            # before all five. Merging them would destroy a real contrast.
             ("icumi", "ee-CHOO-mee"),
             ("umuceri", "oo-moo-CHEH-ree"),
-            ("igiciro", "ee-gee-CHEE-roh"),
+            ("igiciro", "ee-gyee-CHEE-roh"),
             ("rwacu", "RWAH-choo"),
         ],
     )
@@ -99,22 +118,25 @@ class TestGlidesAndPalatals:
     @pytest.mark.parametrize(
         "kinyarwanda,expected",
         [
-            # jy is the plain affricate, not j + y
-            ("umujyi", "oo-MOO-jee"),
-            ("kujya", "KOO-jah"),
-            ("njya", "njah"),
-            ("banjye", "BAHN-jeh"),
+            # jy is [ɟ], the VOICED palatal stop — cy's partner, not "j"
+            ("umujyi", "oo-MOO-gyee"),
+            ("kujya", "KOO-gyah"),
+            ("njya", "ngyah"),
+            ("banjye", "BAHN-gyeh"),
+            # ...while bare j stays j
+            ("ijoro", "ee-JOH-roh"),
+            ("ijana", "ee-JAH-nah"),
             # ny is ONE palatal nasal (canyon), and survives before /i/
             ("inyanya", "ee-NYAH-nyah"),
             ("nyogokuru", "nyoh-goh-KOO-roo"),
             ("kunywa", "KOO-nywah"),
             ("gabanya", "gah-BAH-nyah"),
-            # ry / by / my keep the glide, and drop it before /i/ where it is
-            # redundant: `ryiza` is [rʲiːza], best read as "REE-zah"
+            # ry [ɾɟ] and by [bɟ] keep the glide letter EVERYWHERE, including
+            # before /i/ — the palatal element is a stop, not a redundant glide
             ("ibiryo", "ee-BEE-ryoh"),
             ("kurya", "KOO-ryah"),
-            ("ryiza", "REE-zah"),
-            ("byiza", "BEE-zah"),
+            ("ryiza", "RYEE-zah"),
+            ("byiza", "BYEE-zah"),
             ("byose", "BYOH-seh"),
             ("ibyumba", "ee-BYOOM-bah"),
             ("imyaka", "ee-MYAH-kah"),
@@ -225,7 +247,7 @@ class TestProminence:
         assert respell("Mwiriwe neza.") == "mwee-REE-weh NEH-zah."
 
     def test_a_capital_covers_the_moved_nasal_too(self):
-        assert word("ikinyarwanda") == "ee-chee-nyah-RWAHN-dah"  # RWAHN, not RWAH
+        assert word("ikinyarwanda") == "ee-kyee-nyah-RWAHN-dah"  # RWAHN, not RWAH
 
 
 class TestSentencesAndPunctuation:
@@ -235,14 +257,14 @@ class TestSentencesAndPunctuation:
             ("Mwaramutse!", "mwah-rah-MOOT-seh!"),
             ("Amakuru yawe?", "ah-mah-KOO-roo YAH-weh?"),
             ("Ni meza, urakoze.", "nee MEH-zah, oo-rah-KOH-zeh."),
-            ("Ijoro ryiza.", "ee-JOH-roh REE-zah."),
-            ("Urakoze cyane.", "oo-rah-KOH-zeh CHAH-neh."),
+            ("Ijoro ryiza.", "ee-JOH-roh RYEE-zah."),
+            ("Urakoze cyane.", "oo-rah-KOH-zeh KYAH-neh."),
             # Apostrophe clitics attach to their host: one syllable, not two
-            ("Ikilo ry'inyanya", "ee-KEE-loh ree-NYAH-nyah"),
+            ("Ikilo ry'inyanya", "ee-KYEE-loh ryee-NYAH-nyah"),
             ("Amafaranga y'u Rwanda", "ah-mah-fah-RAHN-gah yoo RWAHN-dah"),
             ("Ndifuza inyama n'ibirayi.", "ndee-FOO-zah ee-NYAH-mah nee-bee-RAH-yee."),
             # Two clauses: phoneme_ref only covers the first, the rest still works
-            ("Ngwino, tugende.", "NGWEE-noh, too-GEHN-deh."),
+            ("Ngwino, tugende.", "NGWEE-noh, too-GYEHN-deh."),
         ],
     )
     def test_whole_sentences(self, sentence, expected):
@@ -324,15 +346,21 @@ class TestOverrides:
     @pytest.mark.parametrize(
         "kinyarwanda,expected",
         [
-            ("banki", "BAHN-kee"),      # not "BAHN-chee"
-            ("ikilo", "ee-KEE-loh"),    # not "ee-CHEE-loh"
-            ("itike", "ee-TEE-keh"),    # not "ee-TEE-cheh"
-            ("Kigali", "kee-GAH-lee"),
+            ("banki", "BAHN-kee"),      # class 9, Iriza transcribes [baanki]
+            ("itike", "ee-TEE-keh"),    # class 9, same shape
+            ("Kigali", "kee-GAH-lee"),  # a choice about place names, not a finding
             ("Kimironko", "kee-mee-ROHN-koh"),
         ],
     )
-    def test_loanwords(self, kinyarwanda, expected):
+    def test_loanwords_that_kept_their_own_noun_class(self, kinyarwanda, expected):
         assert word(kinyarwanda) == expected
+
+    def test_loanwords_reanalysed_into_a_kinyarwanda_class_do_palatalise(self):
+        """The predictor is noun-class reanalysis, not foreign origin. `ikilo`
+        took class 7 (ikiro/ibiro) and `igitabo` even took Dahl's Law voicing
+        (iki- -> igi-), a native-only process — so both are inside the rule."""
+        assert word("ikilo") == "ee-KYEE-loh"
+        assert word("igitabo") == "ee-gyee-TAH-boh"
 
     def test_an_override_beats_phoneme_ref(self):
         wrong = {"syllables": [{"syl": "ba", "tone": "H"}, {"syl": "nki", "tone": "H"}]}
@@ -376,10 +404,12 @@ class TestTheWholeSeededCorpus:
             assert not re.search(r"[^a-zA-Z\s\-'’!?.,«»…]", out), (item["sentence"], out)
 
     def test_no_kinyarwanda_only_spellings_leak_through(self):
-        # If any of these survive into the output, a rule failed to fire.
+        # `cy`, `jy` and `shy` are Kinyarwanda-only digraphs an English reader
+        # cannot sound out. If one survives, a rule failed to fire. ("ky" and
+        # "gy" DO appear — they are the respelling of the palatal series.)
         for item in SEEDED_ITEMS:
             out = respell(item["sentence"], item["phoneme_ref"]).lower()
-            for leak in ("cy", "jy", "shy", "ky", "ntw"):
+            for leak in ("cy", "jy", "shy"):
                 assert leak not in out, (item["sentence"], out, leak)
 
     def test_a_word_respells_the_same_way_in_every_item_it_appears_in(self):
@@ -410,6 +440,29 @@ class TestTheWholeSeededCorpus:
             out = respell(head, item["phoneme_ref"])
             groups = sum(len(w.split("-")) for w in out.split())
             assert groups <= stored, (item["sentence"], out)
+
+
+class TestNonKinyarwandaInput:
+    """The rules are Kinyarwanda rules. Applied to anything else they produce
+    confident nonsense, which is the exact failure this feature exists to fix."""
+
+    def test_letters_outside_the_kinyarwanda_alphabet_are_left_alone(self):
+        # No q, no x, nothing accented — those tokens pass through untouched.
+        assert respell_word("quiz") is None
+        assert respell_word("taxi") is None
+        assert respell_word("ça") is None
+        assert respell("Comment ça va ?") == "CHOH-mmeh ça vah ?"
+
+    def test_the_engine_alone_cannot_tell_french_from_kinyarwanda(self):
+        """This is why ItemOut gates on course code rather than trusting the
+        engine. "Bonjour" is spelled entirely in Kinyarwanda letters, so no
+        amount of orthographic checking saves it — the caller must know."""
+        assert respell("Bonjour !") == "BOHN-johoo !"  # nonsense, by design
+
+    def test_the_alphabet_guard_does_not_touch_real_kinyarwanda(self):
+        for item in SEEDED_ITEMS:
+            for part in respell_words(item["sentence"], item["phoneme_ref"]):
+                assert part.pronunciation is not None, part.word
 
 
 def test_the_uncertainty_list_is_not_empty_and_says_what_it_means():

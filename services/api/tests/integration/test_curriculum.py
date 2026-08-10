@@ -260,10 +260,10 @@ class TestItemPronunciation:
         items = self._roadmap_items(r.json())
         assert items["Mwaramutse!"]["pronunciation"] == "mwah-rah-MOOT-seh!"
         assert items["Muraho!"]["pronunciation"] == "moo-rah-HOH!"
-        assert items["Urakoze cyane."]["pronunciation"] == "oo-rah-KOH-zeh CHAH-neh."
+        assert items["Urakoze cyane."]["pronunciation"] == "oo-rah-KOH-zeh KYAH-neh."
         assert (
             items["Umwarimu yigisha Ikinyarwanda."]["pronunciation"]
-            == "oo-mwah-REE-moo yee-GEE-shah ee-chee-nyah-RWAHN-dah."
+            == "oo-mwah-REE-moo yee-GYEE-shah ee-kyee-nyah-RWAHN-dah."
         )
         # Every seeded item gets one — a blank line in the UI would be a bug.
         assert all(i["pronunciation"] for i in items.values())
@@ -274,7 +274,7 @@ class TestItemPronunciation:
         assert r.status_code == 200
         items = {i["sentence"]: i for i in r.json()["items"]}
         assert items["Mwiriwe neza."]["pronunciation"] == "mwee-REE-weh NEH-zah."
-        assert items["Ijoro ryiza."]["pronunciation"] == "ee-JOH-roh REE-zah."
+        assert items["Ijoro ryiza."]["pronunciation"] == "ee-JOH-roh RYEE-zah."
         assert all(i["pronunciation"] for i in r.json()["items"])
 
     async def test_the_same_word_reads_the_same_way_across_endpoints(self, client):
@@ -284,6 +284,23 @@ class TestItemPronunciation:
         items = self._roadmap_items(roadmap.json())
         for i in deck.json()["items"]:
             assert i["pronunciation"] == items[i["sentence"]]["pronunciation"]
+
+    async def test_skeleton_courses_get_no_pronunciation(self, client):
+        """French and Swahili items must NOT be respelled — "Bonjour !" through
+        Kinyarwanda rules comes out "BOHN-johoo", and Swahili `ki` is a plain
+        "kee" (kitabu), not the Kinyarwanda "chi"."""
+        for email, code in (("fra@example.com", "FRA"), ("swa@example.com", "SWA")):
+            auth = await register_and_login(client, email=email, course_code=code)
+            r = await client.get("/api/v1/roadmap", headers=auth["headers"])
+            assert r.status_code == 200
+            items = self._roadmap_items(r.json())
+            assert items, code
+            assert all(i["pronunciation"] is None for i in items.values()), code
+
+            decks = await client.get("/api/v1/vocab/decks", headers=auth["headers"])
+            tag = decks.json()["decks"][0]["tag"]
+            d = await client.get(f"/api/v1/vocab/decks/{tag}", headers=auth["headers"])
+            assert all(i["pronunciation"] is None for i in d.json()["items"]), code
 
     async def test_pronunciation_costs_no_extra_query(self, app, client, monkeypatch):
         """Derived at serialization time from `sentence` + `phoneme_ref`, both

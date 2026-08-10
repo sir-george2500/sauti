@@ -31,8 +31,8 @@ from sauti.services.audio import audio_urls_for_items
 COURSE_QUIZZES: dict[str, dict[tuple[str, int, int], list[dict]]] = {"KIN": KIN_QUIZZES}
 
 
-def item_out(item, audio_urls: dict[uuid.UUID, str]) -> ItemOut:
-    return ItemOut.from_item(item, audio_urls.get(item.id))
+def item_out(item, audio_urls: dict[uuid.UUID, str], course_code: str) -> ItemOut:
+    return ItemOut.from_item(item, audio_urls.get(item.id), course_code=course_code)
 
 
 def build_quiz(lesson: Lesson, quiz_data: list[dict]) -> list[QuizQuestion]:
@@ -141,7 +141,7 @@ async def build_roadmap(
                         status=status,
                         grammar_md=lesson.grammar_md,
                         culture_note=lesson.culture_note,
-                        items=[item_out(i, audio_urls) for i in lesson.items],
+                        items=[item_out(i, audio_urls, course.code) for i in lesson.items],
                         quick_check=quick_check,
                         quiz=quiz,
                     )

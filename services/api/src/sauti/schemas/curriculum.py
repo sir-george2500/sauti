@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from sauti.schemas.common import Cefr
-from sauti.speech.respell import respell
+from sauti.speech.respell import RESPELLED_COURSE_CODES, respell
 
 # Frontend skill labels are full words; DB stores short forms.
 SKILL_LABELS = {
@@ -40,19 +40,25 @@ class ItemOut(BaseModel):
     audio_url: str | None = None
     # English-intuitive respelling: "Mwaramutse!" -> "mwah-rah-MOOT-seh!".
     # Derived in-process from `sentence` + `phoneme_ref` (both already loaded),
-    # so it costs no query. Null when there is nothing pronounceable.
+    # so it costs no query. Null when there is nothing pronounceable, and null
+    # for every course but Kinyarwanda — the rules are Kinyarwanda rules.
     pronunciation: str | None = None
 
     @classmethod
-    def from_item(cls, item, audio_url: str | None = None) -> "ItemOut":
+    def from_item(
+        cls, item, audio_url: str | None = None, *, course_code: str | None = None
+    ) -> "ItemOut":
         """Serialize a DB Item, enriching it with everything free to compute.
 
         Both call sites (roadmap, vocab decks) go through here so an item looks
-        the same everywhere it is rendered.
+        the same everywhere it is rendered. `course_code` gates the respelling:
+        the French and Swahili skeleton courses get null, because respelling
+        "Bonjour !" with Kinyarwanda rules produces confident nonsense.
         """
         out = cls.model_validate(item, from_attributes=True)
         out.audio_url = audio_url
-        out.pronunciation = respell(item.sentence, item.phoneme_ref)
+        if course_code in RESPELLED_COURSE_CODES:
+            out.pronunciation = respell(item.sentence, item.phoneme_ref)
         return out
 
 

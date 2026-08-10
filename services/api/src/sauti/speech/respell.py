@@ -22,25 +22,54 @@ vowel, and there are no codas. `syllabify()` here is the single source of truth
 — seed/data_kin.py imports it to build every item's `phoneme_ref`, so the
 respelling and the stored syllable data can never drift apart.
 
-Consonants that surprise an English reader:
-  c, cy   -> "ch"     `cyane` CHAH-neh, `icumi` ee-CHOO-mee, `icyayi` ee-CHAH-yee
-  k + i   -> "chi"    /k/ affricates before the front high vowel: `iki` EE-chee,
-                      `Ikinyarwanda` ee-chee-nya-RWAHN-dah. This is the rule the
-                      owner asked for and it is well attested.
-  k + e   -> "che"    the same process before /e/, but WEAKER and more variable
-                      speaker to speaker (see NEEDS_NATIVE_REVIEW).
-  jy      -> "j"      `umujyi` oo-MOO-jee, `kujya` koo-JAH
-  shy     -> "sh"     `ibishyimbo` ee-bee-SHEEM-boh
-  ny      -> "ny"     one palatal nasal, as in "canyon" — NOT n + y
-  ry, by, my  keep the glide (`ibiryo` ee-BEE-ryoh); before /i/ the glide is
-                      redundant and dropped (`ryiza` REE-zah, `byiza` BEE-zah)
-  r       -> "r"      but it is a TAP, near the "tt" of American "butter" —
-                      spelling cannot carry this, the audio has to.
-  g       -> "g"      hard, though intervocalically it is softer than English g.
+The palatal series is where an English reader goes wrong, and it is NOT the
+"ch" everyone reaches for. Kinyarwanda distinguishes a palatal STOP [c] from
+the affricate [tʃ], and spells them differently:
+
+  c       -> "ch"    the affricate [tʃ], "ch as in church" (Cox & Gakuba):
+                     `icumi` ee-CHOO-mee, `umuceri` oo-moo-CHEH-ree
+  cy      -> "ky"    the palatal STOP [c], a different sound: `cyane` KYAH-neh,
+                     `icyumba` ee-KYOOM-bah. English ears hear [c] as "ch" —
+                     that mishearing is where the folk "ichinyarwanda" comes
+                     from — but producing an English "ch" here merges a real
+                     contrast (c vs cy both occur before all five vowels:
+                     gucika/cyiza, amacumu/icyumba). "ky" as in "cute" is the
+                     nearest English sequence; [kj] is an attested variant of
+                     this series.
+  jy      -> "gy"    [ɟ], the voiced partner of cy: `umujyi` oo-MOO-gyee
+  k + i/e -> "ky"    /k/ palatalises before a front vowel, everywhere in the
+  g + i/e -> "gy"    word including finally (`ibitoki`, `urutoki`). Meeussen
+                     (1959:10) via Kochetov (2016) gives [kji~ci] / [ɡji~ɟi];
+                     Wikipedia's orthography section calls it speaker's
+                     preference, i.e. OPTIONAL. We write the [kj]/[ɡj] variant
+                     because it is attested, is what the owner is hearing, and
+                     is recoverable — "chee" would not be.
+  shy     -> "sh"    really [ç] (German "ich"); "sh" is the usable English near
+  ny      -> "ny"    [ɲ], one segment, as in "canyon" — NOT n + y
+  by, ry, my         keep the glide letter: by is [bɟ] and ry is [ɾɟ] ("a
+                     slight g sound between the r and y, but not very strong"
+                     — Cox & Gakuba), so "by"/"ry" [bj]/[ɾj] is the near miss,
+                     and "bj" would be the wrong one.
+  r       -> "r"     a TAP, near the "tt" of American "butter". No English
+                     spelling carries this; the audio has to.
+  b       -> "b"     but between vowels it lenites to [β], a b made with both
+                     lips and softer than an English b (`umugabo` is closer to
+                     "oo-moo-GAH-vo"). Writing "v" would overshoot into a
+                     labiodental, so this one is left to the audio too.
 
 Vowels are the plain five, spelled the way an English reader expects:
   a ah · e eh · i ee · o oh · u oo
-A doubled vowel is ONE long syllable, never two: `saa` -> "saah".
+
+Vowel LENGTH is phonemic in Kinyarwanda and is deliberately NOT rendered here.
+Rwandan orthography does not write it (the 1985 orthographic law prohibits
+doubled vowels; a corpus check of Webonary finds zero doubled-vowel headwords),
+so it would have to be derived — short word-initially and word-finally, fully
+long after a palatalised or labio-velarised consonant, intermediate before a
+prenasalised cluster (Kimenyi; Myers 2005, J. Phonetics 33:427-446). We can
+derive it, but we cannot SPELL it: `byiza` would come out "byeee-zah" and
+`kwishyura` "kweee-SHOOH-rah", which is less usable than saying nothing and
+letting the audio carry it. Where the orthography does happen to write a double
+(`saa`), it stays one long syllable — never two.
 
 Prenasalised onsets (mb nd ng nk mp nz nsh nt njy …) are single segments in
 Kinyarwanda, but an English reader cannot start a syllable with "nd". When
@@ -59,10 +88,11 @@ speaker. Precedence, most to least trustworthy:
   2. `phoneme_ref` syllables marked "H".  ("R" is the seed's question-rise
      mark, a phrase-final intonation contour, not word prominence — it is
      deliberately NOT capitalised.)
-  3. Penultimate syllable. Not a claim that Kinyarwanda has penultimate
-     stress — it does not, in the way Swahili does — but it is where the
-     seeded H marks land in nearly every case, and it reproduces all six of
-     the owner's hand-written targets. Monosyllables get no capital.
+  3. Penultimate syllable. Kinyarwanda has no phonological penultimate stress
+     the way Swahili and Zulu do, but it does show gradient phonetic
+     penultimate lengthening (Myers 2005 via Hyman 2009; Hamlaoui, Engelmann &
+     Szendrői 2022). So this is a light default, not a claim — and it never
+     overrides a marked lexical H. Monosyllables get no capital.
 
 Read NEEDS_NATIVE_REVIEW at the bottom before trusting any of this too far.
 """
@@ -114,7 +144,9 @@ def syllabify(phrase: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 SHORT_VOWELS = {"a": "ah", "e": "eh", "i": "ee", "o": "oh", "u": "oo"}
-# Doubled in the orthography = phonemically long = still one syllable.
+# Rwandan orthography does not write long vowels at all, so this table only
+# fires on the handful of spellings that do carry a double (`saa`) — never on
+# derived length, which we decline to render. Still ONE syllable either way.
 LONG_VOWELS = {"a": "aah", "e": "ehh", "i": "eee", "o": "ohh", "u": "ooh"}
 
 # Onset cluster -> English respelling. Exhaustive over the seeded corpus plus
@@ -122,12 +154,14 @@ LONG_VOWELS = {"a": "aah", "e": "ehh", "i": "eee", "o": "ohh", "u": "ooh"}
 ONSETS: dict[str, str] = {
     "": "",
     "b": "b", "bw": "bw", "by": "by",
-    "c": "ch", "cy": "ch",                 # both spell /tʃ/
+    "c": "ch",                             # the affricate [tʃ], as in "church"
+    "cy": "ky",                            # the palatal STOP [c] — NOT the same
     "d": "d", "dw": "dw", "dy": "dy",
     "f": "f", "fw": "fw",
     "g": "g", "gw": "gw",
     "h": "h", "hw": "hw",
-    "j": "j", "jy": "j",                   # jy is the plain affricate
+    "j": "j",                              # [ʒ]~[dʒ]
+    "jy": "gy",                            # [ɟ], the voiced palatal stop
     "k": "k", "kw": "kw",
     "l": "l",                              # loanwords only (ikilo, Kigali)
     "m": "m", "mw": "mw", "my": "my",
@@ -157,12 +191,23 @@ CODA_TRANSFER: dict[str, str] = {
 }
 # ...but `ny`/`nyw` are the palatal nasal, a single segment, never split.
 
-# Consonant + palatal glide where the glide is redundant before /i/:
-# `ryiza` is [rʲiːza], which an English reader renders best as "REE-zah".
-# `ny` is excluded — it is a phoneme in its own right, so `nyi` is "nyee".
-GLIDE_DROPPED_BEFORE_I = frozenset({"by", "dy", "my", "py", "ry", "ty"})
+# A velar before a front vowel is palatalised: /ki ke/ -> [kji~ci] and
+# /gi ge/ -> [ɡji~ɟi] (Meeussen 1959:10, via Kochetov 2016). Purely
+# phonological — it fires wherever the front vowel is, including word-finally
+# (`urutoki`, `ibitoki`), not only after a class prefix.
+FRONT_PALATALISING = frozenset({"i", "e"})
+PALATALISED_VELAR = {"k": "ky", "g": "gy"}
 
-FRONT_PALATALISING = frozenset({"i", "e"})  # /k/ -> [tʃ] before these
+# The Kinyarwanda alphabet. No q, no x, nothing accented. A word using a letter
+# outside it is not Kinyarwanda, so we decline to respell it rather than
+# inventing a pronunciation (see `respell_word`).
+ALPHABET = frozenset("abcdefghijklmnoprstuvwyz")
+
+# These rules are Kinyarwanda rules and nothing else. Swahili spells `ki` as a
+# plain "kee" (kitabu), French shares almost nothing with any of this — running
+# the engine over either produces confident nonsense, so callers name the
+# course and only KIN gets respelled.
+RESPELLED_COURSE_CODES = frozenset({"KIN"})
 
 
 # ---------------------------------------------------------------------------
@@ -173,12 +218,23 @@ FRONT_PALATALISING = frozenset({"i", "e"})  # /k/ -> [tʃ] before these
 # word below is here for a stated reason. Keyed by the bare lowercased word
 # (apostrophes kept, punctuation stripped).
 OVERRIDES: dict[str, str] = {
-    # -- Loanwords keep their source /k/: they are not nativised to [tʃ]. --
-    "banki": "BAHN-kee",          # < English "bank"
-    "ikilo": "ee-KEE-loh",        # < "kilo"; `l` itself is a loan phoneme
-    "itike": "ee-TEE-keh",        # < English "ticket"
-    "kigali": "kee-GAH-lee",      # see NEEDS_NATIVE_REVIEW — locals say chee-
-    "kimironko": "kee-mee-ROHN-koh",  # Kigali suburb, same caveat as Kigali
+    # -- Loans that were NOT reanalysed into a Kinyarwanda noun class stay
+    #    outside the palatalisation domain and keep a plain [k]. The Rwandan-
+    #    authored Iriza dictionary transcribes `banki` [baanki], one of very
+    #    few unpalatalised bracketings in the book. `itike` is the same shape.
+    #    Loans that WERE reanalysed (ikilo/ikiro, igitabo < Sw. kitabu) do
+    #    palatalise and are deliberately NOT listed here. --
+    "banki": "BAHN-kee",          # < English "bank", class 9
+    "itike": "ee-TEE-keh",        # < English "ticket", class 9
+    # -- Place names kept in the form every map, sign and English conversation
+    #    uses. Note this is a choice, not a finding: Kigali is morphologically
+    #    class-7 ki- + -gali, and Iriza transcribes it /kyi-ga-li/. Top of the
+    #    review list. --
+    "kigali": "kee-GAH-lee",
+    "kimironko": "kee-mee-ROHN-koh",
+    # -- A French given name in a Kinyarwanda sentence; the velar rule would
+    #    turn it into "AHN-gyeh". --
+    "ange": "AHN-jeh",
     # -- Tone the penultimate default gets wrong (seed-confirmed). --
     "muraho": "moo-rah-HOH",      # phoneme_ref marks H on the final syllable
     # -- Words the seed marks inconsistently across items. A learner must see
@@ -234,11 +290,9 @@ def _cluster_sound(onset: str) -> str:
 
 def _onset_sound(onset: str, nucleus: str) -> str:
     """Onset cluster -> English consonants, in the context of its vowel."""
-    if onset.endswith("k") and nucleus[:1] in FRONT_PALATALISING:
-        # /k/ affricates before a front vowel: ki -> "chi", ke -> "che".
-        return _cluster_sound(onset[:-1]) + "ch"
-    if onset in GLIDE_DROPPED_BEFORE_I and nucleus[:1] == "i":
-        return _cluster_sound(onset[:-1])
+    palatalised = PALATALISED_VELAR.get(onset[-1:])
+    if palatalised and nucleus[:1] in FRONT_PALATALISING:
+        return _cluster_sound(onset[:-1]) + palatalised
     return _cluster_sound(onset)
 
 
@@ -318,7 +372,9 @@ def respell_word(word: str, tones: list[str] | None = None) -> str | None:
     while trail > lead and not word[trail - 1].isalpha():
         trail -= 1
     core = word[lead:trail]
-    if not core:
+    if not core or not set(core.lower()) <= ALPHABET | {"'", "’"}:
+        # Not spellable in Kinyarwanda (ç, é, q, x): say nothing rather than
+        # guess. The caller passes the token through unchanged.
         return None
     prefix, suffix = word[:lead], word[trail:]
 
@@ -399,29 +455,62 @@ def respell(sentence: str, phoneme_ref: dict | None = None) -> str | None:
 # Things a Kinyarwanda speaker should look at before we claim these are right.
 # Each entry is a real uncertainty, not a to-do.
 NEEDS_NATIVE_REVIEW: tuple[str, ...] = (
-    "TONE, everywhere. Kinyarwanda tone is lexical and our seed marks it on "
-    "only 25 of 158 items — and most of those marks are the question-rise "
-    "'R', not word tone. Every other word is capitalised by the penultimate "
-    "default, which is a reasonable guess and nothing more.",
-    "k + e ('keza', 'make'). Affrication before /e/ is weaker and more "
-    "variable than before /i/; 'CHEH-zah' may overshoot to a full 'ch'.",
-    "'Kigali' / 'Kimironko'. Native Kinyarwanda has [tʃi] here — 'chee-GAH-lee' "
-    "— but every map, sign and English conversation says 'kee-GAH-lee'. "
-    "Overridden to the international form; a native speaker should decide.",
-    "g before front vowels ('igitabo', 'gikoni'). Written hard 'g'; the real "
-    "sound is softer than an English g and may be palatalised.",
-    "'by' ('byiza', 'ibyumba') and 'ry' ('ibiryo'). Described in the "
-    "literature as affricated [bʑ] / palatalised [rʲ]; 'by'/'ry' here is an "
-    "approximation and drops the glide entirely before /i/.",
-    "'r' is a tap, near the 'tt' of American 'butter'. The respelling writes "
-    "'r' because there is no English spelling for a tap — the audio must "
-    "carry this one.",
-    "'j' is written 'j'; the Kinyarwanda sound sits between the 'j' of 'jam' "
-    "and the 's' of 'measure'.",
-    "Long vowels that are not written double (compensatory lengthening in "
-    "'icyumba', 'cyuma') are not marked — we only lengthen what the "
-    "orthography doubles.",
+    "TONE, everywhere, and it is the weakest thing here. Kinyarwanda tone is "
+    "lexical H vs nothing, borne by the mora, and our seed marks it on only 25 "
+    "of 158 items — most of those being the question-rise 'R', not word tone. "
+    "Everything else is capitalised by the penultimate default, which rests on "
+    "gradient phonetic penultimate LENGTHENING (Myers 2005), not on stress: "
+    "Kinyarwanda has no phonological penultimate stress, and Kimenyi's "
+    "reference sketch never mentions stress at all.",
+    "'amakuru' — we capitalise the penult ('ah-mah-KOO-roo'), following the "
+    "seed's H mark and the owner's own hand-written target, but Wiktionary "
+    "gives 'amakurú' with H on the FINAL syllable. Flagged rather than flipped "
+    "on a single weak source.",
+    "'muraho' — same shape of disagreement the other way: the seed marks H on "
+    "the final ('moo-rah-HOH', which is what we ship), Wiktionary gives "
+    "'muráho' with H on the penult.",
     "'angahe' is marked H on two different syllables in two different seeded "
     "items ('Ni angahe?' vs 'Ni angahe kugera ku isoko?'). At most one can be "
-    "right.",
+    "right; pinned to the penult so a learner sees one spelling.",
+    "'ki'/'ke'/'gi'/'ge' -> 'ky'/'gy'. The palatalised realisation is real but "
+    "OPTIONAL: Meeussen (1959:10) via Kochetov (2016) gives the range "
+    "[kʲi~ci], and the northern Kirera dialect de-palatalises systematically "
+    "(Dukuzumuremyi et al. 2024). No acoustic study of this alternation "
+    "appears to exist. We write the [kʲ] end of the range; a speaker may "
+    "prefer the plain velar, and both are correct.",
+    "'cy' -> 'ky' is the correction that changes the most words, and it "
+    "contradicts what an English ear reports. `cy` is the palatal STOP [c] "
+    "(Kimenyi lists cy/jy/shy as palatalised velars, and writes the "
+    "derivation *ikyúuma > icyuma); `c` alone is the affricate [tʃ]. Both "
+    "occur before all five vowels, so they cannot be merged into one 'ch' "
+    "without destroying a contrast. Kirundi HAS merged them, which is where "
+    "some of the 'ch' transcriptions come from.",
+    "'Kigali' / 'Kimironko' are shipped unpalatalised as a deliberate choice "
+    "about place names, NOT as a finding. Kigali is morphologically class-7 "
+    "ki- + -gali, and the Rwandan-authored Iriza dictionary transcribes it "
+    "/kyi-ga-li/. If the owner would rather sound local than international, "
+    "these two overrides should go.",
+    "Loanwords: whether 'banki' and 'itike' really block palatalisation is a "
+    "genuine gap. No source states a loanword exemption; the split we encode "
+    "is noun-class reanalysis (ikilo, igitabo palatalise — they took class 7 "
+    "and even Dahl's Law; banki, itike did not), resting on one Iriza "
+    "bracketing, `banki [baanki]`.",
+    "VOWEL LENGTH is phonemic and we render none of it. Rwandan orthography "
+    "does not write it (1985 law) so it must be derived — short word-initially "
+    "and word-finally, long after a consonant+glide, longer-but-not-long "
+    "before a prenasalised cluster (Kimenyi 1979 says 'always lengthen' there; "
+    "Myers 2005 measured it as intermediate and disagrees). Deriving it is "
+    "easy; SPELLING it is not, and 'byeee-zah' would cost more than it buys.",
+    "'mp', 'nt', 'nk' are aspirated, and Kimenyi reports 'mp' as [mh] outright "
+    "(impamvu ≈ 'eem-HAAM-vu'). Only 'mpa' in this corpus is affected, and it "
+    "is shipped as 'mpah'.",
+    "Glide clusters STRENGTHEN to stops in a way English spelling cannot "
+    "carry: by [bɟ], ry [ɾɟ], mw [mŋ] (umwana ≈ 'oo-MNGAA-nah'), tw [tkw], "
+    "rw [ɾgw], bw [bg], nyw [ɲŋw], shy [ç]. We write the plain digraphs; the "
+    "audio has to teach these.",
+    "'r' is a tap, near the 'tt' of American 'butter' (and orthographic 'l' in "
+    "loans is the same tap). There is no English spelling for it.",
+    "'b' between vowels lenites to the bilabial fricative [β] — 'umugabo' is "
+    "nearer 'oo-moo-GAH-vo'. Written 'b', because 'v' would overshoot into a "
+    "labiodental and would then be wrong after a nasal ('imbwa').",
 )
