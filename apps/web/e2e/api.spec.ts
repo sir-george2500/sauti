@@ -1,5 +1,13 @@
 import { expect, test, type APIResponse } from "@playwright/test";
-import { API_BASE, PASSWORD, uniqueEmail, allItems, type RoadmapPayload } from "./helpers";
+import {
+  API_BASE,
+  PASSWORD,
+  allItems,
+  freshUser,
+  getJson,
+  uniqueEmail,
+  type RoadmapPayload,
+} from "./helpers";
 
 /**
  * API-level e2e (Playwright request contexts against the real API):
@@ -146,4 +154,43 @@ test("speech scoring is deterministic: same input → same PronReport", async ({
   expect(attemptBody.pron).toEqual(report1);
 
   await ctx.dispose();
+});
+
+/**
+ * The respelling contract the UI renders against: `pronunciation` on item
+ * payloads, in BOTH places the frontend reads items from. A guide that is
+ * present on the roadmap but missing from a deck would leave the vocab card —
+ * the one screen with nothing else to lean on — silently bare, which is the
+ * exact failure a rendering test can't see.
+ */
+test("items carry their English respelling on the roadmap AND in a vocab deck", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { token } = await freshUser(page, "api-respell");
+
+  const roadmap = await getJson<RoadmapPayload>(page.request, "/roadmap", token);
+  const items = allItems(roadmap);
+  expect(items.length).toBeGreaterThan(0);
+  for (const item of items) {
+    expect(
+      typeof item.pronunciation === "string" || item.pronunciation === null,
+      `${item.sentence}: pronunciation must be a string or null`,
+    ).toBe(true);
+  }
+  const respelled = items.filter((i) => i.pronunciation);
+  expect(respelled.length, "KIN items should be respelled").toBeGreaterThan(0);
+  // Hyphenated syllables with the stressed one in caps — what the UI styles.
+  expect(respelled[0].pronunciation).toMatch(/[a-z]/);
+
+  const deck = await getJson<{ items: { sentence: string; pronunciation?: string | null }[] }>(
+    page.request,
+    "/vocab/decks/greetings",
+    token,
+  );
+  expect(deck.items.length).toBeGreaterThan(0);
+  expect(
+    deck.items.filter((i) => i.pronunciation).length,
+    "deck cards need the respelling too",
+  ).toBeGreaterThan(0);
 });

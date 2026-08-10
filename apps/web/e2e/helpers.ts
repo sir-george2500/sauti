@@ -174,6 +174,8 @@ export interface RoadmapItem {
   id: string;
   sentence: string;
   gloss: string;
+  /** English respelling — null for items with nothing pronounceable. */
+  pronunciation?: string | null;
 }
 
 export interface QuizQuestionPayload {
