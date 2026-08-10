@@ -1,9 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  clearPlayedRates,
+  fakeRespelling,
   freshUser,
   getJson,
   lessonQuizOf,
+  playedRates,
   postJson,
+  recordPlaybackRates,
+  stubPronunciation,
   type RoadmapPayload,
 } from "./helpers";
 
@@ -165,4 +170,88 @@ test("lesson prev/next navigation + reopening a done lesson from the roadmap", a
   await donePill.click();
   await page.waitForURL(`**/lesson/${l1.id}`);
   await expect(page.getByTestId("lesson")).toContainText(l1.title, { timeout: 30_000 });
+});
+
+/**
+ * Journey 4c — the pronunciation respelling and the slow controls, on the
+ * screen a learner meets them first.
+ *
+ * The API really does respell every item, but this test needs both paths on
+ * one page and needs to know the exact string, so the roadmap payload is
+ * rewritten on the way through: the first item gets a guide, every other item
+ * gets an explicit null.
+ */
+test("lesson: respelling sits above the Kinyarwanda, slow plays slower, the preference sticks", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { token } = await freshUser(page, "j4c-say-it");
+
+  const roadmap = await getJson<RoadmapPayload>(page.request, "/roadmap", token);
+  const lesson = roadmap.levels[0].units[0].lessons[0];
+  const items = lesson.items ?? [];
+  expect(items.length, "seed lesson needs a second item for the null path").toBeGreaterThan(1);
+  const guide = fakeRespelling(items[0].sentence);
+
+  await recordPlaybackRates(page);
+  await stubPronunciation(page, "**/api/v1/roadmap", (sentence, i) =>
+    i === 0 ? fakeRespelling(sentence) : null,
+  );
+
+  await page.goto(`/lesson/${lesson.id}`);
+  const rows = page.getByTestId("example-row");
+  await expect(rows.first()).toBeVisible({ timeout: 40_000 });
+
+  // 1. The guide is there, word for word, and it is an annotation on the word
+  //    (an <rt> inside the <ruby>), not a second line of text.
+  const annotated = rows.first();
+  const guideParts = annotated.getByTestId("pronunciation-guide");
+  expect((await guideParts.allTextContents()).join(" ")).toBe(guide);
+  await expect(annotated).toContainText(items[0].sentence);
+
+  // 2. …and it sits ABOVE the Kinyarwanda, not beside or below it.
+  const guideBox = (await guideParts.first().boundingBox())!;
+  const baseBox = (await annotated.getByTestId("respell-base").first().boundingBox())!;
+  expect(guideBox.x, "the respelling is over the word, not beside it").toBeCloseTo(
+    baseBox.x + baseBox.width / 2 - guideBox.width / 2,
+    0,
+  );
+  expect(guideBox.y, "the respelling starts above the word").toBeLessThan(baseBox.y);
+  expect(
+    guideBox.y + guideBox.height,
+    "the respelling clears the word's midline — it sits over it, not on it",
+  ).toBeLessThanOrEqual(baseBox.y + baseBox.height / 2);
+  // Quieter and smaller than the word it annotates — a whisper, not a headline.
+  expect(guideBox.height).toBeLessThan(baseBox.height);
+
+  // 3. An item without a respelling renders nothing extra, and nothing breaks.
+  const plain = rows.nth(1);
+  await expect(plain.getByTestId("pronunciation-guide")).toHaveCount(0);
+  await expect(plain).toContainText(items[1].sentence);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow, "the page must not scroll sideways").toBeLessThanOrEqual(0);
+
+  // 4. Every play button has a slow companion, and it really is slower.
+  await expect(annotated.getByTestId("play-audio")).toBeVisible();
+  await annotated.getByTestId("play-slow").click();
+  await expect.poll(() => playedRates(page)).toEqual([0.7]);
+
+  // 5. "Always slowly": one switch, persisted, applied to a PLAIN play button.
+  const toggle = page.getByTestId("slow-audio-toggle");
+  await expect(toggle, "full speed out of the box").toHaveAttribute("data-on", "false");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("data-on", "true");
+
+  await page.reload();
+  await expect(rows.first()).toBeVisible({ timeout: 40_000 });
+  await expect(
+    page.getByTestId("slow-audio-toggle"),
+    "the preference survives a reload",
+  ).toHaveAttribute("data-on", "true");
+
+  await clearPlayedRates(page);
+  await rows.first().getByTestId("play-audio").click();
+  await expect.poll(() => playedRates(page)).toEqual([0.7]);
 });

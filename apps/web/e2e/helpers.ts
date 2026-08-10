@@ -87,6 +87,87 @@ export async function postJson<T>(
   return (await res.json()) as T;
 }
 
+// --- Audio / pronunciation instrumentation ---------------------------------
+
+/**
+ * Record the playbackRate of every clip the page actually plays.
+ *
+ * The app sets `playbackRate` before calling `play()`, so this is the speed
+ * the learner hears — the only way to assert "the slow control is really
+ * slower" from the outside. Install before the first navigation.
+ */
+export async function recordPlaybackRates(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const rates: number[] = [];
+    (window as unknown as { __rates: number[] }).__rates = rates;
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      rates.push(this.playbackRate);
+      return play.apply(this);
+    };
+  });
+}
+
+/** The rates recorded so far, oldest first. */
+export function playedRates(page: Page): Promise<number[]> {
+  return page.evaluate(() => (window as unknown as { __rates: number[] }).__rates ?? []);
+}
+
+export async function clearPlayedRates(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    (window as unknown as { __rates: number[] }).__rates.length = 0;
+  });
+}
+
+/**
+ * Rewrite `pronunciation` on every item in a payload as it comes back.
+ *
+ * The field is real (the API respells from the sentence), but a test needs
+ * BOTH paths on one screen — an item that has a guide and one that is
+ * explicitly null — and needs to know the exact string to assert. `guide`
+ * returns the respelling for an item, or null to blank it out.
+ */
+export async function stubPronunciation(
+  page: Page,
+  url: string | RegExp,
+  guide: (sentence: string, index: number) => string | null,
+): Promise<void> {
+  await page.route(url, async (route) => {
+    const response = await route.fetch();
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      await route.fulfill({ response });
+      return;
+    }
+    let index = 0;
+    const walk = (node: unknown): void => {
+      if (Array.isArray(node)) {
+        node.forEach(walk);
+        return;
+      }
+      if (!node || typeof node !== "object") return;
+      const obj = node as Record<string, unknown>;
+      if (typeof obj.id === "string" && typeof obj.sentence === "string") {
+        obj.pronunciation = guide(obj.sentence, index++);
+      }
+      Object.values(obj).forEach(walk);
+    };
+    walk(body);
+    await route.fulfill({ response, json: body });
+  });
+}
+
+/** A respelling with exactly as many tokens as the sentence, so it aligns. */
+export function fakeRespelling(sentence: string): string {
+  return sentence
+    .trim()
+    .split(/\s+/)
+    .map((_, i) => (i === 0 ? "mwah-rah-MOOT-seh" : "tah-DAH"))
+    .join(" ");
+}
+
 // --- Roadmap shapes (subset the tests need) --------------------------------
 
 export interface RoadmapItem {

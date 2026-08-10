@@ -344,7 +344,7 @@ function MobileTopBar() {
           </nav>
           {/* Same preference, reachable on a phone. No testid: the sidebar
               copy owns it so every data-testid stays unique in the DOM. */}
-          <SlowAudioToggle testid={undefined} compact className="w-auto flex-none" />
+          <SlowAudioToggle testid={null} compact className="w-auto flex-none" />
         </div>
       </div>
     </header>

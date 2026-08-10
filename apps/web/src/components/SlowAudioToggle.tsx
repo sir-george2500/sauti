@@ -21,8 +21,8 @@ export function SlowAudioToggle({
   compact = false,
   className = "",
 }: {
-  /** Omitted on the mobile bar so the sidebar keeps the unique testid. */
-  testid?: string;
+  /** `null` on the mobile bar so the sidebar keeps the unique testid. */
+  testid?: string | null;
   /** Glyph + rate only — for the cramped mobile top bar. */
   compact?: boolean;
   className?: string;
@@ -32,7 +32,7 @@ export function SlowAudioToggle({
   return (
     <button
       type="button"
-      data-testid={testid}
+      data-testid={testid ?? undefined}
       data-on={on}
       aria-pressed={on}
       onClick={() => setSlowAudio(!on)}

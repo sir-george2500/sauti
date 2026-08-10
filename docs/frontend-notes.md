@@ -132,9 +132,12 @@ backend lands a different shape, update that file + this list together.
   passes an explicit `rate`, which beats the preference so its own label can't
   lie; that player's segmented control starts on "0.7× learner" when the
   preference is on. Slowing happens in the browser (`playbackRate` with
-  `preservesPitch` on, i.e. WSOLA time-stretch); below ~0.7× it starts to
-  smear consonants. Genuinely slower speech would have to be synthesized
-  server-side — `services/voice/tts_app.py` has no speed parameter today.
+  `preservesPitch` on, i.e. WSOLA time-stretch). Measured on a real clip from
+  our own TTS, WSOLA damage is flat across 0.55–0.75× (~2.6 dB best-match
+  spectral distance, better than the same clip at 30 dB SNR), so 0.7× is a
+  teaching choice, not an audio limit — dropping to 0.6× costs nothing
+  measurable. Genuinely slower speech would have to be synthesized
+  server-side; `services/voice/tts_app.py` has no speed parameter today.
 - **Listening practice** is lesson-based (`/practice/listening/[lessonId]`):
   the lesson's items are the dialogue lines/transcript and its `quick_check`
   doubles as the comprehension MCQ (no dedicated listening payload in §5).

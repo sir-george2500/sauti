@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { freshUser, getJson, postJson, rewindSrsDue } from "./helpers";
+import {
+  fakeRespelling,
+  freshUser,
+  getJson,
+  playedRates,
+  postJson,
+  recordPlaybackRates,
+  rewindSrsDue,
+  stubPronunciation,
+} from "./helpers";
 
 interface DeckItems {
   tag: string;
@@ -78,4 +87,52 @@ test("decks show due counts; reviewing clears them", async ({ page }) => {
     ).toBeVisible({ timeout: 20_000 });
   }).toPass({ timeout: 120_000 });
   await expect(page.getByTestId("review-due")).toBeHidden();
+});
+
+/**
+ * Journey 5b — the review card says the word out loud, slowly, with the
+ * English respelling over it.
+ *
+ * A deck card is the one place a learner sees a Kinyarwanda word with nothing
+ * else on screen to lean on, so it is where the respelling earns its keep.
+ */
+test("vocab card: respelling above the word, and a slow take of the same clip", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const { token } = await freshUser(page, "j5b-say-it");
+
+  const deck = await getJson<DeckItems>(page.request, "/vocab/decks/greetings", token);
+  const first = deck.items[0];
+  const guide = fakeRespelling(first.sentence);
+
+  await recordPlaybackRates(page);
+  // First card annotated, the rest explicitly null — both paths, one deck.
+  await stubPronunciation(page, "**/api/v1/vocab/decks/**", (sentence, i) =>
+    i === 0 ? fakeRespelling(sentence) : null,
+  );
+
+  await page.goto("/vocab/greetings");
+  const card = page.getByTestId("review-card");
+  await expect(card).toBeVisible({ timeout: 40_000 });
+
+  const guideParts = card.getByTestId("pronunciation-guide");
+  expect((await guideParts.allTextContents()).join(" ")).toBe(guide);
+  await expect(card).toContainText(first.sentence);
+
+  const guideBox = (await guideParts.first().boundingBox())!;
+  const baseBox = (await card.getByTestId("respell-base").first().boundingBox())!;
+  expect(guideBox.y).toBeLessThan(baseBox.y);
+  expect(guideBox.y + guideBox.height).toBeLessThanOrEqual(baseBox.y + baseBox.height / 2);
+
+  // The play pair: normal, then the same clip slowed down.
+  await card.getByTestId("play-audio").click();
+  await card.getByTestId("play-slow").click();
+  await expect.poll(() => playedRates(page)).toEqual([1, 0.7]);
+
+  // Next card has no respelling: the card renders clean, nothing reserved.
+  await page.getByTestId("reveal-card").click();
+  await page.getByTestId("grade-good").click();
+  await expect(card.getByTestId("pronunciation-guide")).toHaveCount(0);
+  await expect(card.getByTestId("play-slow")).toBeVisible();
 });
