@@ -305,8 +305,17 @@ class TestPerWordApi:
     def test_the_joined_words_are_the_sentence_respelling(self):
         for item in SEEDED_ITEMS:
             parts = respell_words(item["sentence"], item["phoneme_ref"])
-            joined = " ".join(p.pronunciation for p in parts if p.pronunciation)
+            joined = " ".join(p.pronunciation or p.word for p in parts)
             assert joined == respell(item["sentence"], item["phoneme_ref"])
+
+    def test_token_count_survives_so_a_client_can_zip_by_split(self):
+        # The frontend pairs word-with-respelling by splitting both on spaces.
+        for sentence in [i["sentence"] for i in SEEDED_ITEMS] + ["Muraho — Mwiriwe"]:
+            out = respell(sentence)
+            assert len(out.split()) == len(sentence.split()), sentence
+
+    def test_an_unpronounceable_token_is_passed_through_not_dropped(self):
+        assert respell("Muraho — Mwiriwe") == "moo-rah-HOH — mwee-REE-weh"
 
 
 class TestOverrides:

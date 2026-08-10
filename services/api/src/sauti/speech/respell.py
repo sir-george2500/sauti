@@ -380,10 +380,16 @@ def respell(sentence: str, phoneme_ref: dict | None = None) -> str | None:
 
     None (rather than "") when there is nothing to say, so an item payload can
     carry `pronunciation: null` and the UI can simply not render the line.
+
+    Token count is preserved: the result has exactly as many whitespace-
+    separated tokens as `sentence`, so a client can zip the two together
+    word-by-word with a plain `.split()`. A token with nothing pronounceable in
+    it (a lone dash) is passed through unchanged rather than dropped.
     """
-    parts = [w.pronunciation for w in respell_words(sentence, phoneme_ref)]
-    out = " ".join(p for p in parts if p)
-    return out or None
+    parts = respell_words(sentence, phoneme_ref)
+    if not any(p.pronunciation for p in parts):
+        return None
+    return " ".join(p.pronunciation or p.word for p in parts)
 
 
 # ---------------------------------------------------------------------------
