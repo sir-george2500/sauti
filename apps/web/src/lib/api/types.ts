@@ -130,6 +130,13 @@ export interface Item {
    * /tts/{item_id} route stays the fallback.
    */
   audio_url?: string | null;
+  /**
+   * English-readable respelling with the stressed syllable capitalised —
+   * "Mwaramutse" → "mwah-rah-MOOT-seh". Rendered above the Kinyarwanda as a
+   * ruby annotation. Absent/null for items the backend hasn't respelled;
+   * nothing extra is drawn then.
+   */
+  pronunciation?: string | null;
 }
 
 export interface QuickCheckOption {
