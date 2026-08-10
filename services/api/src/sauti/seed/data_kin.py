@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-_SYL = re.compile(r"[^aeiouAEIOU\W]*[aeiouAEIOU]+|[^aeiouAEIOU\W]+", re.UNICODE)
+from sauti.speech.respell import syllabify
 
 
 def syl(phrase: str, tones: dict[int, str] | None = None) -> dict:
@@ -17,16 +17,12 @@ def syl(phrase: str, tones: dict[int, str] | None = None) -> dict:
 
     tones maps syllable index -> H/R/F (default L). Only the leading phrase up
     to a punctuation break is used — that is what the pronunciation screen drills.
+
+    The split itself lives in sauti.speech.respell, which also reads these
+    syllables back to build the English respelling — one definition, so the
+    stored phoneme_ref and the respelling can never disagree.
     """
-    head = re.split(r"[,.!?…]", phrase)[0]
-    syllables: list[dict] = []
-    for word in head.split():
-        word = word.strip("'’\"“”")
-        for part in word.replace("’", "'").split("'"):
-            if not part:
-                continue
-            for chunk in _SYL.findall(part):
-                syllables.append({"syl": chunk.lower(), "tone": "L"})
+    syllables = [{"syl": chunk, "tone": "L"} for chunk in syllabify(phrase)]
     for idx, tone in (tones or {}).items():
         if 0 <= idx < len(syllables):
             syllables[idx]["tone"] = tone
