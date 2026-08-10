@@ -13,6 +13,7 @@ import {
 import { greetingName, RequireAuth, useAuth } from "@/lib/auth";
 import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
 import { BuddyWidget } from "@/components/BuddyWidget";
+import { SlowAudioToggle } from "@/components/SlowAudioToggle";
 
 const COURSES: { code: string; label: string }[] = [
   { code: "KIN", label: "Ikinyarwanda" },
@@ -240,6 +241,9 @@ function SidebarFooter() {
 
   return (
     <div className="border-t border-bark-line px-5 pt-[18px] pb-[22px]">
+      <div className="mb-3">
+        <SlowAudioToggle />
+      </div>
       {gamification === "light" && consistency ? (
         <div className="mb-3 flex items-center gap-2 rounded-full border border-rhythm-line bg-rhythm-bg py-[7px] pr-3 pl-3">
           <span aria-hidden className="animate-rhythm h-2 w-2 rounded-full bg-gold" />
@@ -324,19 +328,24 @@ function MobileTopBar() {
           </svg>
           <span className="ky text-lg font-bold text-paper">sauti</span>
         </Link>
-        <nav className="flex gap-1 overflow-x-auto">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`rounded-nav px-2.5 py-1.5 text-[13px] whitespace-nowrap ${
-                l.active ? "bg-ember/22 font-semibold text-bark-hi" : "text-bark-soft"
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="flex min-w-0 items-center gap-2">
+          <nav className="flex gap-1 overflow-x-auto">
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`rounded-nav px-2.5 py-1.5 text-[13px] whitespace-nowrap ${
+                  l.active ? "bg-ember/22 font-semibold text-bark-hi" : "text-bark-soft"
+                }`}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+          {/* Same preference, reachable on a phone. No testid: the sidebar
+              copy owns it so every data-testid stays unique in the DOM. */}
+          <SlowAudioToggle testid={undefined} compact className="w-auto flex-none" />
+        </div>
       </div>
     </header>
   );

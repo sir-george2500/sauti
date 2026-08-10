@@ -24,6 +24,8 @@ import {
   useBuddy,
 } from "@/lib/buddy/store";
 import { isPlaying, playExclusive, stopPlayback } from "@/lib/audio/player";
+import { playbackRate } from "@/lib/audio/rate";
+import { useSlowAudio } from "@/lib/audio/rate-store";
 
 /**
  * Mwarimu — the floating study buddy. Mounted once inside <AppShell>, so it
@@ -244,6 +246,14 @@ function Bubble({
 export function BuddyWidget() {
   const router = useRouter();
   const { messages, awaiting, open, soundOn } = useBuddy();
+  // Mwarimu speaks Kinyarwanda too, so he follows the app-wide slow
+  // preference. Held in a ref so flipping it can't re-fire the autoplay
+  // effect and make an old turn speak again.
+  const alwaysSlow = useSlowAudio();
+  const alwaysSlowRef = useRef(alwaysSlow);
+  useEffect(() => {
+    alwaysSlowRef.current = alwaysSlow;
+  }, [alwaysSlow]);
   const [draft, setDraft] = useState("");
   const [playingId, setPlayingId] = useState<number | null>(null);
   const fabRef = useRef<HTMLButtonElement | null>(null);
@@ -285,6 +295,7 @@ export function BuddyWidget() {
     if (!auto) setPlayingId(message.id);
     void playExclusive(url, {
       owner: AUDIO_OWNER,
+      rate: playbackRate({ alwaysSlow: alwaysSlowRef.current }),
       onStop: () => {
         if (turnRef.current === turn) setPlayingId(null);
       },
