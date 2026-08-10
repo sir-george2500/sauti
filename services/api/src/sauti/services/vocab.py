@@ -110,11 +110,9 @@ async def deck_detail(
     due_ids = [i.id for i in items if (s := states.get(i.id)) and _aware(s.due_at) <= now]
     title, _gloss = _names(tag)
     audio_urls = await audio_urls_for_items(db, items)  # one bulk query, never per-item
-    out_items = []
-    for i in items:
-        item_out = ItemOut.model_validate(i, from_attributes=True)
-        item_out.audio_url = audio_urls.get(i.id)
-        out_items.append(item_out)
+    # `pronunciation` is derived in-process from sentence + phoneme_ref — no
+    # further query, no N+1.
+    out_items = [ItemOut.from_item(i, audio_urls.get(i.id)) for i in items]
     return VocabDeckItemsOut(
         tag=tag,
         title=title,

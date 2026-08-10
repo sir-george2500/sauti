@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from sauti.schemas.common import Cefr
+from sauti.speech.respell import respell
 
 # Frontend skill labels are full words; DB stores short forms.
 SKILL_LABELS = {
@@ -37,6 +38,22 @@ class ItemOut(BaseModel):
     # Cached TTS URL (Cloudinary), playable as-is by an <audio> element.
     # Null when not yet cached — the client falls back to GET /tts/{item_id}.
     audio_url: str | None = None
+    # English-intuitive respelling: "Mwaramutse!" -> "mwah-rah-MOOT-seh!".
+    # Derived in-process from `sentence` + `phoneme_ref` (both already loaded),
+    # so it costs no query. Null when there is nothing pronounceable.
+    pronunciation: str | None = None
+
+    @classmethod
+    def from_item(cls, item, audio_url: str | None = None) -> "ItemOut":
+        """Serialize a DB Item, enriching it with everything free to compute.
+
+        Both call sites (roadmap, vocab decks) go through here so an item looks
+        the same everywhere it is rendered.
+        """
+        out = cls.model_validate(item, from_attributes=True)
+        out.audio_url = audio_url
+        out.pronunciation = respell(item.sentence, item.phoneme_ref)
+        return out
 
 
 class QuickCheckOption(BaseModel):

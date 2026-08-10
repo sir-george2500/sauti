@@ -32,9 +32,7 @@ COURSE_QUIZZES: dict[str, dict[tuple[str, int, int], list[dict]]] = {"KIN": KIN_
 
 
 def item_out(item, audio_urls: dict[uuid.UUID, str]) -> ItemOut:
-    out = ItemOut.model_validate(item, from_attributes=True)
-    out.audio_url = audio_urls.get(item.id)
-    return out
+    return ItemOut.from_item(item, audio_urls.get(item.id))
 
 
 def build_quiz(lesson: Lesson, quiz_data: list[dict]) -> list[QuizQuestion]:
